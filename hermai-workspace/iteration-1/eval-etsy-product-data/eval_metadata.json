@@ -1,0 +1,11 @@
+{
+  "eval_id": 0,
+  "eval_name": "etsy-product-data",
+  "prompt": "I need to get product data from etsy.com as structured JSON — like listings with prices, titles, and shop names. What's the best way to do this programmatically?",
+  "assertions": [
+    {"name": "checks_registry_first", "type": "contains_concept", "description": "Checks hermai registry/catalog for existing etsy schema before suggesting scraping"},
+    {"name": "includes_intent", "type": "contains_concept", "description": "Includes an intent string when querying catalog or pulling schema"},
+    {"name": "shows_endpoint_call", "type": "contains_concept", "description": "Shows how to actually call the discovered endpoint with curl or code"},
+    {"name": "no_scraping_suggestion", "type": "contains_concept", "description": "Does not suggest BeautifulSoup, Selenium, Puppeteer, or manual HTML parsing as the primary approach"}
+  ]
+}

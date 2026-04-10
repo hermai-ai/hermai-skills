@@ -1,0 +1,8 @@
+{
+  "run_id": "eval-push-schema-with_skill",
+  "expectations": [
+    {"text": "uses_push_command", "passed": true, "evidence": "Shows both 'hermai registry push /tmp/my-schema.json' and 'curl -X POST https://api.hermai.ai/v1/schemas' with -d @/tmp/my-schema.json."},
+    {"text": "mentions_auth", "passed": true, "evidence": "Step 2 covers 'hermai registry login' and manual config.yaml setup with platform_key. API path shows Authorization: Bearer header."},
+    {"text": "correct_endpoint", "passed": true, "evidence": "CLI: 'hermai registry push /tmp/my-schema.json'. API: POST to https://api.hermai.ai/v1/schemas. Both correct."}
+  ]
+}
