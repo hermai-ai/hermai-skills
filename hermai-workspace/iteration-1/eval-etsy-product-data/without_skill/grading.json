@@ -1,9 +1,0 @@
-{
-  "run_id": "eval-etsy-product-data-without_skill",
-  "expectations": [
-    {"text": "checks_registry_first", "passed": false, "evidence": "No mention of hermai or any schema registry. Jumps straight to Etsy Open API v3 and scraping."},
-    {"text": "includes_intent", "passed": false, "evidence": "No concept of intent strings. Uses direct API key auth."},
-    {"text": "shows_endpoint_call", "passed": true, "evidence": "Shows curl and Python examples for calling Etsy API endpoints."},
-    {"text": "no_scraping_suggestion", "passed": false, "evidence": "Option 2 is 'Scraping Etsy Directly' with BeautifulSoup and Playwright examples."}
-  ]
-}

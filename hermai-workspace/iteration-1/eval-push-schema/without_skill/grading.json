@@ -1,8 +1,0 @@
-{
-  "run_id": "eval-push-schema-without_skill",
-  "expectations": [
-    {"text": "uses_push_command", "passed": false, "evidence": "Guesses at 'hermai schema push' and 'hermai publish' — neither is correct. CLI command is 'hermai registry push'."},
-    {"text": "mentions_auth", "passed": false, "evidence": "Guesses at HERMAI_API_KEY env var. Doesn't mention hm_sk_ keys, registry login, or config.yaml platform_key."},
-    {"text": "correct_endpoint", "passed": false, "evidence": "Guesses URL as api.hermai.dev (old domain). Admits 'I'm guessing at the URL and auth mechanism here'."}
-  ]
-}

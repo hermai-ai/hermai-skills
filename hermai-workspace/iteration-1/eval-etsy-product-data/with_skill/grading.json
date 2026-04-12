@@ -1,9 +1,0 @@
-{
-  "run_id": "eval-etsy-product-data-with_skill",
-  "expectations": [
-    {"text": "checks_registry_first", "passed": true, "evidence": "First step is 'hermai registry list --query etsy' and API equivalent. Registry check is the opening move."},
-    {"text": "includes_intent", "passed": true, "evidence": "Pull command includes --intent 'fetching product listings with prices titles and shop names from Etsy search results'. API call includes X-Hermai-Intent header."},
-    {"text": "shows_endpoint_call", "passed": true, "evidence": "Step 3 shows curl command calling the discovered endpoint URL with jq extraction."},
-    {"text": "no_scraping_suggestion", "passed": true, "evidence": "No mention of BeautifulSoup, Selenium, Puppeteer, or HTML parsing. Uses hermai exclusively."}
-  ]
-}

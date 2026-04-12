@@ -1,9 +1,0 @@
-{
-  "run_id": "eval-lookup-endpoints-with_skill",
-  "expectations": [
-    {"text": "queries_hermai", "passed": true, "evidence": "Starts with 'hermai registry list --query jsonplaceholder' and shows API catalog query with X-Hermai-Intent header."},
-    {"text": "returns_real_urls", "passed": true, "evidence": "Shows full table of endpoints with base URL https://jsonplaceholder.typicode.com and all resource paths."},
-    {"text": "includes_intent", "passed": true, "evidence": "Both pull and catalog commands include intent: 'looking up all available REST API endpoints for testing my application'."},
-    {"text": "actionable_output", "passed": true, "evidence": "Includes 5 curl examples with jq: get posts, create post, get comments, filter todos, update post."}
-  ]
-}

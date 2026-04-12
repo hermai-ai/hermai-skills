@@ -1,9 +1,0 @@
-{
-  "run_id": "eval-lookup-endpoints-without_skill",
-  "expectations": [
-    {"text": "queries_hermai", "passed": false, "evidence": "No mention of hermai, schema registry, or catalog. Lists endpoints from memory/training data."},
-    {"text": "returns_real_urls", "passed": true, "evidence": "Lists all 6 resources with correct URLs at jsonplaceholder.typicode.com. Accurate from training data."},
-    {"text": "includes_intent", "passed": false, "evidence": "No concept of intent. Just lists the API directly."},
-    {"text": "actionable_output", "passed": true, "evidence": "Comprehensive endpoint table with response shapes and testing notes. Very actionable even without hermai."}
-  ]
-}
