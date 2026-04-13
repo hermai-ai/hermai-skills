@@ -30,22 +30,41 @@ These are deterministic tools — no API key needed. Chain them like an agent wo
 |---------|---------|
 | `hermai probe <url>` | TLS-fingerprinted fetch, anti-bot detection, strategy discovery |
 | `hermai probe --body <url>` | Raw HTML to stdout (pipe to extract) |
-| `hermai probe --stealth <url>` | Force Chrome TLS fingerprinting |
 | `hermai extract [file]` | Extract all embedded data patterns from HTML |
 | `hermai extract --pattern <name>` | Extract one specific pattern |
-| `hermai extract --list-patterns` | List all 13 known patterns |
+| `hermai wellknown <domain>` | Probe 15 standard paths (robots, sitemap, RSS, GraphQL, oEmbed, WP API) |
+| `hermai introspect <url>` | GraphQL schema discovery via introspection query |
+| `hermai detect <url>` | Identify anti-bot systems + platform/CMS |
+| `hermai intercept <url>` | Launch browser, capture XHR/API calls, output replay specs |
+| `hermai replay <req.json>` | Replay a captured request with TLS fingerprinting |
 | `hermai discover <url>` | Full engine discovery (needs LLM key) |
 
-### Probe + extract pipeline
+### Discovery pipeline
+
+Chain commands to reverse-engineer a site. Each outputs JSON the next can consume.
 
 ```bash
-# Discover what data YouTube embeds in its HTML
-hermai probe --body --stealth "https://www.youtube.com/watch?v=dQw4w9WgXcQ" \
-  | hermai extract
+# 1. What does the site use? (anti-bot, platform, CMS)
+hermai detect --stealth https://example.com
 
-# Extract just the video metadata
-hermai probe --body --stealth "https://www.youtube.com/watch?v=dQw4w9WgXcQ" \
+# 2. What standard paths exist? (sitemap, RSS, GraphQL, WP API)
+hermai wellknown example.com
+
+# 3. If GraphQL found — introspect the schema
+hermai introspect https://example.com/graphql
+
+# 4. Probe the page and extract embedded data patterns
+hermai probe --body --stealth https://example.com | hermai extract
+
+# 5. Extract just one pattern (e.g., YouTube video data)
+hermai probe --body --stealth "https://youtube.com/watch?v=..." \
   | hermai extract --pattern ytInitialData
+
+# 6. For SPAs — capture XHR calls via browser
+hermai intercept https://example.com
+
+# 7. Verify a captured API call works standalone
+hermai replay request.json --stealth
 ```
 
 The extract command recognizes 13 embedded patterns: `ytInitialData`, `ytInitialPlayerResponse`, `__NEXT_DATA__`, `__UNIVERSAL_DATA_FOR_REHYDRATION__`, `SIGI_STATE`, `__APOLLO_STATE__`, `__PRELOADED_STATE__`, `__remixContext`, `__NUXT__`, `__NUXT_DATA__`, `__FRONTITY_CONNECT_STATE__`, `__MODERN_ROUTER_DATA__`, `__INITIAL_STATE__`.
