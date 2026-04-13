@@ -1,74 +1,66 @@
 ---
 name: hermai-contribute
-description: "REQUIRED when the user wants to add a website to the Hermai registry, contribute a schema, reverse-engineer a site's API, or push a new endpoint set. Examples: 'add stripe.com to hermai', 'push this schema', 'discover the API for nytimes.com', 'register a new site on hermai', 'document tiktok's API', 'help me contribute to hermai', 'my schema failed validation with FORBIDDEN_FIELD'. Also REQUIRED when the user asks about Hermai schema format v0.1, intent categories, how to write a session block for an anti-bot site, or why a push was rejected. This skill teaches how to build, validate, and contribute schemas to the Hermai registry. For simply calling an already-registered site, use the hermai skill instead."
+description: "REQUIRED when the user wants to add a website to the Hermai registry, contribute a schema, reverse-engineer a site's API, or push a new endpoint set. Also REQUIRED when the user asks about Hermai schema format, intent categories, session blocks for anti-bot sites, or why a push was rejected. For calling already-registered sites, use the hermai skill instead."
 ---
 
 # Hermai — Contribute schemas to the registry
 
-Hermai's registry is a catalog of website APIs: each entry tells an agent exactly which endpoints to call, what parameters to pass, and (for anti-bot sites) how to warm a browser session before calling. Contributing a schema means reverse-engineering a site once so every future agent can use it without scraping.
+Contributing a schema means reverse-engineering a site once so every future agent can call it without scraping.
 
-This skill covers **building and pushing** schemas. For calling already-registered sites, use the **hermai** skill.
+> For **calling** already-registered sites, use the **hermai** skill.
 
-## Deciding: CLI vs API
-
-Check if the CLI is available:
+## Quick start
 
 ```bash
-which hermai || hermai --version
+# 1. Probe the site
+hermai probe --stealth https://example.com
+
+# 2. Extract embedded data patterns from the HTML
+hermai probe --body --stealth https://example.com | hermai extract
+
+# 3. Build a schema JSON (see format below), then push
+hermai registry push schema.json
 ```
 
-- **CLI available**: Use `hermai discover` and `hermai registry push` — they handle auth, canonicalization, and validation locally before pushing
-- **CLI not available**: Build a schema JSON by hand and `POST /v1/schemas` with `curl`
+## CLI discovery commands
 
-Both paths hit the same validator. The CLI gives you a local dry-run before the network call.
+These are deterministic tools — no API key needed. Chain them like an agent would.
+
+| Command | Purpose |
+|---------|---------|
+| `hermai probe <url>` | TLS-fingerprinted fetch, anti-bot detection, strategy discovery |
+| `hermai probe --body <url>` | Raw HTML to stdout (pipe to extract) |
+| `hermai probe --stealth <url>` | Force Chrome TLS fingerprinting |
+| `hermai extract [file]` | Extract all embedded data patterns from HTML |
+| `hermai extract --pattern <name>` | Extract one specific pattern |
+| `hermai extract --list-patterns` | List all 13 known patterns |
+| `hermai discover <url>` | Full engine discovery (needs LLM key) |
+
+### Probe + extract pipeline
+
+```bash
+# Discover what data YouTube embeds in its HTML
+hermai probe --body --stealth "https://www.youtube.com/watch?v=dQw4w9WgXcQ" \
+  | hermai extract
+
+# Extract just the video metadata
+hermai probe --body --stealth "https://www.youtube.com/watch?v=dQw4w9WgXcQ" \
+  | hermai extract --pattern ytInitialData
+```
+
+The extract command recognizes 13 embedded patterns: `ytInitialData`, `ytInitialPlayerResponse`, `__NEXT_DATA__`, `__UNIVERSAL_DATA_FOR_REHYDRATION__`, `SIGI_STATE`, `__APOLLO_STATE__`, `__PRELOADED_STATE__`, `__remixContext`, `__NUXT__`, `__NUXT_DATA__`, `__FRONTITY_CONNECT_STATE__`, `__MODERN_ROUTER_DATA__`, `__INITIAL_STATE__`.
 
 ## Authentication
 
-Contribution requires an API key:
+Pushing requires an API key:
 
 ```bash
 hermai registry login
-# Or:
-mkdir -p ~/.hermai && chmod 700 ~/.hermai
-echo "platform_key: hm_sk_YOUR_KEY" > ~/.hermai/config.yaml
-chmod 600 ~/.hermai/config.yaml
 ```
 
-Keys come from https://hermai.ai/dashboard.
+Keys come from https://hermai.ai/dashboard (GitHub sign-in).
 
-## Core Workflows
-
-### 1. Discover a new site's API
-
-If no schema exists, use the CLI to discover endpoints automatically:
-
-```bash
-export HERMAI_API_KEY=sk-...  # OpenRouter or OpenAI key for LLM analysis
-hermai discover https://example.com
-```
-
-This probes the site, intercepts network traffic via a headless Chrome session, and emits a candidate schema. Review it, edit if needed, then push it.
-
-For sites the automated discover can't fully map (heavy anti-bot, signed requests, shop pages that lazy-load), hand-craft the schema: use browser DevTools to watch the real XHR calls, copy URL templates and parse paths into a JSON file that conforms to the format below.
-
-### 2. Push a schema
-
-```bash
-# CLI
-hermai registry push schema.json
-
-# API
-curl -X POST https://api.hermai.ai/v1/schemas \
-  -H "Authorization: Bearer $KEY" \
-  -H "Content-Type: application/json" \
-  -d @schema.json
-```
-
-The validator returns the persisted public card on success, or an error code on rejection (see Error Codes below).
-
-Pushing the same content twice is idempotent: the content hash is over the canonicalized `full_package`, so an unchanged schema returns the existing version.
-
-## Schema Format (v0.1)
+## Schema format (v0.1)
 
 ```json
 {
@@ -76,13 +68,13 @@ Pushing the same content twice is idempotent: the content hash is over the canon
   "intent_category": "commerce",
   "schema_format_version": "0.1",
   "name": "example/products",
-  "description": "Short tagline — what this catalog is and what data is accessible. Not a how-to.",
+  "description": "Short tagline — what this catalog is and what data is accessible.",
   "endpoints": [
     {
       "name": "search",
       "method": "GET",
       "url_template": "https://api.example.com/products",
-      "description": "Search products by keyword. Parse path and field list belong HERE, not in the top-level description.",
+      "description": "Technical how-to: parse paths, selectors, query param semantics.",
       "headers": {"Accept": "application/json"},
       "query_params": [
         {"key": "q", "required": true},
@@ -99,39 +91,33 @@ Pushing the same content twice is idempotent: the content hash is over the canon
         }
       }
     }
-  ],
-  "actions": []
+  ]
 }
 ```
 
-**Required fields:** `site`, `intent_category`, `schema_format_version` (must be `"0.1"`)
+**Required fields:** `site`, `intent_category`, `schema_format_version` (must be `"0.1"`), and per-endpoint `name`, `method`, `url_template`.
 
-**Categories:** `commerce`, `travel`, `jobs`, `social`, `media`, `reference`, `food`, `finance`, `real-estate`, `communication`, `productivity`, `knowledge`, `developer`, `sports`
+**Categories:** `commerce`, `travel`, `jobs`, `social`, `media`, `reference`, `food`, `finance`, `real-estate`, `communication`, `productivity`, `knowledge`, `developer`, `sports`, `government`
 
-**Key rules:**
-- Use `url_template` (not `url`) for endpoint URLs
-- Top-level `description` is a **catalog tagline** — say what the site is and what data is accessible. No tier counts, parse paths, script IDs, or internal research notes.
-- Per-endpoint `description` is where the technical how-to goes — parse paths, field lists, script IDs, query param semantics. An agent only reads it once it has decided to call that endpoint.
-- `session.description` is bootstrap instructions for a warm browser — same rule: agent-facing, not a lab notebook
+**Description rules:**
+- Top-level `description` = catalog tagline. Say what the site is. No parse paths, tier counts, or script IDs.
+- Per-endpoint `description` = technical how-to. Parse paths, selectors, field lists go here.
+- `session.description` = bootstrap instructions for a warm browser. Agent-facing prose, not a lab notebook.
 
-## Sites that need a browser session
+## Session block (anti-bot sites)
 
-Some sites (Airbnb, Transfermarkt, TikTok, Zillow, etc.) gate their APIs behind anti-bot systems or per-request signing. These are **first-class citizens** in the registry. The schema carries a `session` block documenting what the caller must run **locally** to warm a browser, capture cookies, and sign requests. Hermai is a registry of *what you need to run each endpoint*, not a magic proxy.
+Sites behind Cloudflare, DataDome, or request signing (TikTok, Airbnb, Zillow) carry a `session` block:
 
 ```json
 {
-  "site": "tiktok.com",
-  "intent_category": "social",
-  "schema_format_version": "0.1",
-  "endpoints": [ /* ... */ ],
   "session": {
     "bootstrap_url": "https://www.tiktok.com/",
     "tls_profile": "chrome_131",
     "required_cookies": ["msToken", "odin_tt", "ttwid"],
-    "endpoints_needing_session": ["user_posts", "search_general", "..."],
+    "endpoints_needing_session": ["user_posts", "search_general"],
     "sign_function": "window.byted_acrawler.frontierSign",
     "sign_strategy": "in_page_fetch",
-    "description": "Step-by-step: (1) launch Chrome via rod/Playwright, (2) navigate to bootstrap_url, (3) wait ~15s for webmssdk.js to populate cookies, (4) call page.Eval('fetch(url).text()') for each /api/* endpoint so TikTok's own signer handles X-Bogus/msToken injection."
+    "description": "Launch Chrome, navigate to bootstrap_url, wait for cookies, use page.Eval fetch for signed endpoints."
   },
   "requires_stealth": true
 }
@@ -139,58 +125,46 @@ Some sites (Airbnb, Transfermarkt, TikTok, Zillow, etc.) gate their APIs behind 
 
 ### Allowed session fields
 
-All are public documentation of what a local client needs:
-
-- `session.bootstrap_url` — warm-up URL the client navigates to
-- `session.tls_profile` — Chrome-TLS fingerprint name (e.g. `chrome_131`)
-- `session.required_cookies` — list of cookie **names** (never values)
-- `session.endpoints_needing_session` — which endpoints in this schema need the warm session; endpoints NOT listed work with plain HTTPS
-- `session.sign_function` / `session.sign_strategy` — where/how the browser signs requests
-- `session.data_extraction` — for HTML-extract endpoints: selector + parse path per endpoint
-- `session.description` — prose bootstrap instructions
-- `requires_stealth: true` — top-level hint that this schema needs a real-browser path
+`bootstrap_url`, `tls_profile`, `required_cookies` (names only, never values), `endpoints_needing_session`, `sign_function`, `sign_strategy`, `data_extraction`, `description`.
 
 ### Forbidden fields (rejected on push)
 
-These would store **user-specific secrets** or evasion recipes:
-
-- `proxy_credentials`, `residential_proxy` — third-party proxy logins are each user's problem
-- `clearance_cookies`, `clearance_cookie_js` — cookie **values** (names are fine; values would be a user's session token)
-- `bypass_method`, `stealth_script` — opaque evasion recipes belong in client code, not schemas
-- `tls_fingerprint` — raw fingerprint bytes; use the named `tls_profile` instead
+- `proxy_credentials`, `residential_proxy` — user's own problem
+- `clearance_cookies`, `clearance_cookie_js` — cookie values are secrets
+- `bypass_method`, `stealth_script` — evasion belongs in client code
+- `tls_fingerprint` — use named `tls_profile` instead
 
 ### Forbidden name patterns
 
-Schemas or endpoints whose names contain any of these are rejected:
-
 `bypass`, `circumvent`, `cf-clearance`, `anti-bot`, `rotate-ip`
 
-These imply the schema is the evasion tool, not a catalog of what the client runs. If you're documenting how a user's browser legitimately reaches the site, you don't need these words.
+## Push workflow
 
-## API Endpoint Reference
+```bash
+# CLI
+hermai registry push schema.json
 
-Base URL: `https://api.hermai.ai`
+# API
+curl -X POST https://api.hermai.ai/v1/schemas \
+  -H "Authorization: Bearer $KEY" \
+  -H "Content-Type: application/json" \
+  -d @schema.json
+```
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST | `/v1/schemas` | Push a schema (auth required) |
-| GET | `/v1/account/contributions` | Your pushed schemas (auth required) |
-| GET | `/v1/categories` | Full intent taxonomy (public) |
+Pushing identical content twice is idempotent (content-hashed).
 
-## Validation Error Codes
+## Validation error codes
 
 | Code | Meaning |
 |------|---------|
 | `UNAUTHORIZED` | Missing/invalid API key |
-| `MISSING_FIELD` | Push missing a required field (`site`, `intent_category`, `schema_format_version`, or per-endpoint `name`/`method`/`url_template`) |
+| `MISSING_FIELD` | Required field missing |
 | `UNKNOWN_CATEGORY` | `intent_category` not in the canonical list |
-| `FORBIDDEN_FIELD` | Schema contains a disallowed session field (see Forbidden fields above) |
-| `FORBIDDEN_NAME` | Schema or endpoint name contains a forbidden pattern (`bypass`, `circumvent`, etc.) |
-| `INVALID_SCHEMA_VERSION` | `schema_format_version` is not `"0.1"` |
+| `FORBIDDEN_FIELD` | Disallowed session field (see above) |
+| `FORBIDDEN_NAME` | Name contains forbidden pattern |
+| `INVALID_SCHEMA_VERSION` | Not `"0.1"` |
 
-When you hit `FORBIDDEN_FIELD` or `FORBIDDEN_NAME`, re-read the Forbidden sections above — the fix is almost always to move evasion logic out of the schema and into local client code, or to swap a cookie-value field for a cookie-name-only `required_cookies` entry.
-
-## CLI Installation
+## CLI installation
 
 ```bash
 # macOS Apple Silicon
@@ -205,14 +179,3 @@ sudo mv hermai /usr/local/bin/
 curl -L https://github.com/hermai-ai/hermai-cli/releases/latest/download/hermai_linux_amd64.tar.gz | tar xz
 sudo mv hermai /usr/local/bin/
 ```
-
-## Contributor CLI Command Reference
-
-```
-hermai discover <url>                              Full engine discovery (needs LLM key)
-hermai registry push <file.json>                   Upload schema
-hermai init                                        Create config interactively
-hermai doctor                                      Check system readiness
-```
-
-For listing, pulling, fetching, and calling schemas, use the **hermai** skill.
