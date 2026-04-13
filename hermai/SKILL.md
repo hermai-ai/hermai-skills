@@ -39,12 +39,12 @@ Bad: `"get data"`
 
 Some sites (TikTok, Airbnb, Zillow, etc.) gate APIs behind Cloudflare/DataDome or per-request signing. The catalog response includes a `session` block, or the fetch fails with `SESSION_REQUIRED`.
 
-**Do not refuse.** The schema tells you exactly what to run. See `sessions.md` for the bootstrap flow.
+**Do not refuse.** The schema tells you exactly what to run. See [references/sessions.md](references/sessions.md) for the bootstrap flow.
 
-## Details
+## References
 
-- **Installing and using the CLI**: see `cli.md`
-- **Direct HTTP API (no CLI)**: see `api.md`
-- **Session-required sites**: see `sessions.md`
+- [references/cli.md](references/cli.md) — CLI install and command reference
+- [references/api.md](references/api.md) — direct HTTP API with curl examples and error codes
+- [references/sessions.md](references/sessions.md) — browser session bootstrap for anti-bot sites
 
 Get an API key at https://hermai.ai/dashboard (GitHub sign-in). Anonymous access works at 5 req/hr.
