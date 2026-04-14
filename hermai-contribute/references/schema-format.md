@@ -48,6 +48,10 @@
 
 ## Description rules
 
-- **Top-level `description`** = catalog tagline. Say what the site is and what data is accessible. No parse paths, tier counts, or script IDs.
-- **Per-endpoint `description`** = technical how-to. Parse paths, selectors, query param semantics, field lists go here. An agent reads it only after deciding to call that endpoint.
+- **Top-level `description`** = user-voice catalog card. Describe *what information a caller can get* from this schema, in one or two sentences. The catalog page renders this verbatim — write it for a reader who has never touched the CLI.
+  - Good: *"Search public repositories, get repository details, and list of users' public repos, etc."* (github.com)
+  - Good: *"Read public Threads profiles and posts. Pulls display name, bio, follower counts, plus every post in a thread with text, images, timestamps, and like counts."* (threads.com)
+  - Bad: naming endpoints, URL paths, parse-path selectors, script tag IDs, or CLI commands like `hermai probe` / `hermai extract`.
+  - Sanity check: re-read your draft and ask *"would this sentence still make sense to someone who has never used the CLI?"* If not, rewrite.
+- **Per-endpoint `description`** = technical how-to. Parse paths, selectors, query param semantics, field lists, JSON script tag IDs — all fine here. An agent reads it only after deciding to call that endpoint.
 - **`session.description`** = bootstrap instructions for a warm browser. Agent-facing prose, not a lab notebook.

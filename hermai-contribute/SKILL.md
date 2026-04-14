@@ -69,6 +69,28 @@ hermai replay request.json --stealth
 
 The extract command recognizes 13 embedded patterns: `ytInitialData`, `ytInitialPlayerResponse`, `__NEXT_DATA__`, `__UNIVERSAL_DATA_FOR_REHYDRATION__`, `SIGI_STATE`, `__APOLLO_STATE__`, `__PRELOADED_STATE__`, `__remixContext`, `__NUXT__`, `__NUXT_DATA__`, `__FRONTITY_CONNECT_STATE__`, `__MODERN_ROUTER_DATA__`, `__INITIAL_STATE__`.
 
+## Writing the description
+
+**Read this every time before drafting a schema — this is the #1 pattern contributors get wrong.**
+
+The top-level `description` is the **catalog card** that shows on hermai.ai/schemas. It describes **what information the caller can get**, in the voice of a user deciding whether to use the schema. It is NOT a changelog of how the CLI retrieves the data.
+
+Good — user voice, names the data:
+
+> "Search public repositories, get repository details, and list of users' public repos, etc."
+> — github.com schema
+
+> "Read public Threads profiles and posts. Pulls a profile's display name, bio, follower and thread counts, plus every post in a thread with their text, images, timestamps, and like counts."
+> — threads.com schema
+
+Bad — implementation voice, names endpoints / parse steps / CLI commands:
+
+> ~~"A single GET to /@{user}/post/{id} returns the full thread chain inside <script type=\"application/json\" data-sjs> blocks..."~~
+
+> ~~"Use `hermai probe --stealth` then pipe to `hermai extract` to get the embedded __NEXT_DATA__ payload..."~~
+
+Parse paths, selectors, `hermai` command examples, JSON script tag names, and CLI flags belong in per-endpoint descriptions — never the top-level description. Before pushing, re-read your description and ask: *"If I'd never touched this CLI, would this sentence still make sense?"* If not, rewrite.
+
 ## Authentication
 
 Pushing requires an API key:
