@@ -26,7 +26,16 @@ Fires when a user wants data from a website — "check prices on allbirds.com", 
 
 ### `hermai-contribute` — add to the registry
 
-Fires when a user wants to register a new site, push a schema, or run `hermai discover`. Teaches schema format v0.1, the intent category taxonomy, and the session-block rules for anti-bot sites (allowed fields, forbidden fields, forbidden name patterns, and how validation errors map back to the spec).
+Fires when a user wants to register a new site or push a schema. Teaches the agent to use the [hermai-cli](https://github.com/hermai-ai/hermai-cli) discovery toolkit (`hermai detect`, `wellknown`, `probe`, `extract`, `intercept`, `introspect`, `session`) to document a site's endpoints, then compose a schema against format v0.1 and push it with `hermai registry push`. Covers the intent category taxonomy, session-block rules for anti-bot sites (allowed fields, forbidden fields, forbidden name patterns), and how validation errors map back to the spec.
+
+Requires `hermai-cli` installed locally:
+
+```bash
+go install github.com/hermai-ai/hermai-cli/cmd/hermai@latest
+hermai registry login
+```
+
+See [hermai-ai/hermai-cli](https://github.com/hermai-ai/hermai-cli) for full install and command reference.
 
 ## Repo layout
 
