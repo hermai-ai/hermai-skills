@@ -7,7 +7,7 @@
   "site": "example.com",
   "intent_category": "commerce",
   "schema_format_version": "0.1",
-  "name": "example/products",
+  "name": "example.com",
   "description": "Search the product catalog and pull individual product details, prices, and stock info.",
   "endpoints": [
     {
@@ -36,6 +36,14 @@
 }
 ```
 
+## Naming rule
+
+`name` **is the bare domain** (e.g. `threads.com`, `allrecipes.com`, `lu.ma`). Do not scope it to a sub-path like `lu.ma/events` or `eventbrite/events` — catalog browsers search and sort by name, and adding a slash-path makes the same domain appear under different identities depending on what was contributed first.
+
+If a schema covers only part of a site, communicate the scope in `description` (user-voice) and `interactions_out_of_scope`. The name stays the domain.
+
+Same rule for `site`: lowercase, no scheme (`https://`), no path.
+
 ## Required fields
 
 - `site`
@@ -47,9 +55,31 @@
 
 `commerce`, `travel`, `jobs`, `social`, `media`, `reference`, `food`, `finance`, `real-estate`, `communication`, `productivity`, `knowledge`, `developer`, `sports`, `government`
 
+## Public card vs. full package
+
+Every pushed schema lands as two views: the **public card** that anyone can read without an API key at `GET /v1/schemas/{site}`, and the **full package** delivered behind `hermai registry pull` (API key + intent). The server does the split automatically — what you write in your schema JSON is the full package, and the card is a projection.
+
+You can't change what's projected. But knowing the rules prevents two mistakes: putting extraction detail in fields that show on the card (competitors re-implement the site without paying), and expecting fields to show on the card that never get projected (contributor thinks validation is broken).
+
+| Field in your schema | On the public card | In the full package |
+|---------------------|--------------------|---------------------|
+| `site`, `intent_category`, `schema_format_version` | Yes | Yes |
+| `name`, `description`, `version` | Yes | Yes |
+| `endpoints[].name`, `endpoints[].method` | Yes | Yes |
+| `endpoints[].purpose` | **Yes** — user-voice card blurb | Yes |
+| `endpoints[].description` | **No** — paywalled | Yes |
+| `endpoints[].url_template` | **No** — paywalled | Yes |
+| `endpoints[].headers` (values) | **No** — paywalled | Yes |
+| `endpoints[].variables`, `query_params`, `response_schema` | **No** — paywalled | Yes |
+| `endpoints[].has_auth` (derived) | **No** — learned post-pull | Yes |
+| `requires_stealth: true` | Yes — surfaces as "Requires browser" badge | Yes |
+| `session` block | **Projected** — see [sessions.md](sessions.md) for which fields survive | Yes |
+
+**Rule of thumb for writing `endpoints[].description`**: assume only an API-key holder with a declared intent will ever read it. Keep parse paths, jq selectors, JSON script tag IDs, and regex out of `purpose`; they belong in `description` where they're paywalled.
+
 ## Description rules
 
-The registry splits every schema into a **public card** (what the schema offers) and a **full package** (how to execute, auth + intent gated). Description fields follow the same split — public copy says *what*, private copy says *how*. This is a security boundary, not a style preference: leaking the *how* onto the public card lets anyone re-implement the site without ever calling our API.
+Description fields follow the public/private split above — public copy says *what*, private copy says *how*. This is a security boundary, not a style preference: leaking the *how* onto the public card lets anyone re-implement the site without ever calling our API.
 
 - **Top-level `description`** → public card. One or two sentences describing *what information a caller can get*, user-voice.
   - Good: *"Search public repositories, get repository details, and list of users' public repos, etc."* (github.com)
