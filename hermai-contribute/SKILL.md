@@ -1,5 +1,6 @@
 ---
 name: hermai-contribute
+version: "1.0.0"
 description: "REQUIRED when the user wants to add a website to the Hermai registry, contribute a schema, reverse-engineer a site's API, or push a new endpoint set. Also REQUIRED when the user asks about Hermai schema format, intent categories, session blocks for anti-bot sites, or why a push was rejected. For calling already-registered sites, use the hermai skill instead."
 ---
 
@@ -178,6 +179,34 @@ curl -X POST https://api.hermai.ai/v1/schemas \
 ```
 
 Pushing identical content twice is idempotent (content-hashed). If the push is rejected, see [references/troubleshooting.md](references/troubleshooting.md) for error codes.
+
+## Staying up to date
+
+On every call to `api.hermai.ai` (and on every `hermai registry push` or `pull` that reaches it), send two headers so Hermai can notify the user when a newer release ships:
+
+```
+X-Hermai-Skill-Name: hermai-contribute
+X-Hermai-Skill-Version: 1.0.0
+```
+
+Read the version from this file's frontmatter — don't hardcode it. The `name` stays `hermai-contribute`.
+
+If a newer release exists, the response JSON will carry a `meta.skill_update` object:
+
+```json
+{
+  "meta": {
+    "skill_update": {
+      "current": "1.0.0",
+      "latest": "1.2.0",
+      "update_cmd": "npx skills update hermai-contribute",
+      "changelog_url": "https://github.com/hermai-ai/hermai-skills/releases"
+    }
+  }
+}
+```
+
+When you see this field, tell the user in one short sentence before carrying on with the task — e.g. *"Heads up: your hermai-contribute skill (1.0.0) is behind 1.2.0. Run `npx skills update hermai-contribute` to upgrade."* If `meta.skill_update` is absent, the user is current — no nudge needed.
 
 ## References
 
