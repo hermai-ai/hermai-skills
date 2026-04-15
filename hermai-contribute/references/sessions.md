@@ -2,6 +2,19 @@
 
 Sites behind Cloudflare, DataDome, or request signing (TikTok, Airbnb, Zillow) carry a `session` block describing what a local client must do: warm a browser, capture named cookies, and replay requests from a Chrome-TLS HTTP client.
 
+## Which flag does what
+
+Two separate top-level signals show different badges on the public card. Pick the one that matches the site.
+
+| What you want | Field in your schema | Badge on the public card |
+|---------------|---------------------|--------------------------|
+| Site needs a Chrome-like TLS fingerprint but no cookies/bootstrap | `requires_stealth: true` | **Requires browser** |
+| Site needs a warm browser session — bootstrap URL, cookies, or signed requests | `session` block with at least one of `bootstrap_url`, `required_cookies`, or non-`"none"` `tls_profile` | **Requires browser bootstrap** |
+
+These are independent. A site can set `requires_stealth: true` without a session block (TLS fingerprint only), carry a session block without `requires_stealth` (cookie bootstrap but HTTP-only), or both.
+
+> **Bootstrap badge gating.** The server runs `isMeaningfulSession()` before projecting the session or flipping the bootstrap flag. A block that only contains notes, a description, or `tls_profile: "none"` is treated as documentation-only and **does not** trip the badge. If you want the badge, ship at least one real bootstrap signal: a `bootstrap_url`, a non-empty `required_cookies` array, or a meaningful `tls_profile` (e.g. `"chrome_131"`).
+
 ## Example
 
 ```json
