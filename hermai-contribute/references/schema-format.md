@@ -7,7 +7,7 @@
   "site": "example.com",
   "intent_category": "commerce",
   "schema_format_version": "0.1",
-  "name": "example/products",
+  "name": "example.com",
   "description": "Search the product catalog and pull individual product details, prices, and stock info.",
   "endpoints": [
     {
@@ -35,6 +35,14 @@
   ]
 }
 ```
+
+## Naming rule
+
+`name` **is the bare domain** (e.g. `threads.com`, `allrecipes.com`, `lu.ma`). Do not scope it to a sub-path like `lu.ma/events` or `eventbrite/events` — catalog browsers search and sort by name, and adding a slash-path makes the same domain appear under different identities depending on what was contributed first.
+
+If a schema covers only part of a site, communicate the scope in `description` (user-voice) and `interactions_out_of_scope`. The name stays the domain.
+
+Same rule for `site`: lowercase, no scheme (`https://`), no path.
 
 ## Required fields
 
