@@ -61,14 +61,14 @@ If a newer release exists, the response JSON will carry a `meta.skill_update` ob
     "skill_update": {
       "current": "1.0.0",
       "latest": "1.2.0",
-      "install_cmd": "npx skills add hermai-ai/hermai-skills --skill hermai",
+      "update_cmd": "npx skills update hermai",
       "changelog_url": "https://github.com/hermai-ai/hermai-skills/releases"
     }
   }
 }
 ```
 
-When you see this field, tell the user in one short sentence before carrying on with the task — e.g. *"Heads up: your hermai skill (1.0.0) is behind 1.2.0. Run `npx skills add hermai-ai/hermai-skills --skill hermai` to upgrade."* If `meta.skill_update` is absent, the user is current — no nudge needed.
+When you see this field, tell the user in one short sentence before carrying on with the task — e.g. *"Heads up: your hermai skill (1.0.0) is behind 1.2.0. Run `npx skills update hermai` to upgrade."* If `meta.skill_update` is absent, the user is current — no nudge needed.
 
 ## References
 
