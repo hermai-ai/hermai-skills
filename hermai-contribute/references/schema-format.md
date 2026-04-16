@@ -91,3 +91,11 @@ Description fields follow the public/private split above — public copy says *w
 - **`session.description`** → full package only. Bootstrap instructions for a warm browser. Agent-facing prose, not a lab notebook.
 
 Quick test: would a competitor gain a meaningful shortcut to re-implement the site by reading this field without an API key? If yes, the content belongs under `description` (per-endpoint) or inside the session block, not on the public card.
+
+## Verified, not wishful
+
+Every selector, jq path, regex, or JSON key you write into `description` (or into `session.data_extraction`) must be *confirmed* to extract the data you claim — by running it against the live page before you push. "I saw this class name in the HTML" is not verification; the class may be CSS-only and carry no data. Grep for a concrete data point (a real country name, a real price, a real product id) and look at the DOM *wrapping that value* — that wrapper is your real selector.
+
+If a selector returns zero matches on a live fetch, delete it from the description or replace it with the one that works. Callers trust the paywalled `description` to execute cleanly; shipping selectors that don't fire is a worse bug than shipping no description, because debugging "why did parsing return empty?" wastes the caller's time on a problem we could have caught at contribution.
+
+See the "Phase 4: Verify" section in the main skill for the extraction drill.
