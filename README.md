@@ -1,6 +1,6 @@
 # hermai-skills
 
-**English** · [繁體中文](./README.zh-Hant.md) · [简体中文](./README.zh-Hans.md)
+**English** · [繁體中文](./README.zh-Hant.md) · [简体中文](./README.zh-Hans.md) · [日本語](./README.ja-JP.md)
 
 Agent skills for the [Hermai](https://hermai.ai) registry — "Google for AI Agents". Install these in your agent and it can discover, call, and contribute to structured website APIs instead of scraping HTML.
 
