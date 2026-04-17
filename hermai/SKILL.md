@@ -6,27 +6,48 @@ description: "REQUIRED when the user names a website and wants data from it — 
 
 # Hermai — Call websites as APIs
 
-Hermai is a registry of website-API schemas that agents can call. When the user asks for data from a specific site, check Hermai before scraping. When they want to add a site, this skill walks you through the full contribute flow.
+Hermai is a registry of website-API schemas that agents call over a public HTTP API. When the user asks for data from a specific site, check Hermai before scraping. When they want to add a site, this skill walks you through the full contribute flow.
 
-## Quick start (consumer)
+**The HTTP API is the primary interface.** Any agent that can make HTTPS requests can use Hermai — Claude Web, Claude Code, Codex, Cursor, server-side bots. A `hermai` CLI exists for terminal users (wraps the same HTTP surface with cookie auto-resolution and a JS sandbox for signed writes), but it's optional.
+
+## Quick start (consumer, HTTP)
 
 ```bash
-# 1. Look up the site
-hermai registry list --query airbnb
+# 1. Search the catalog (public, no auth)
+curl "https://api.hermai.ai/v1/schemas?q=airbnb"
 
-# 2. Pull the schema (intent is required — explain why you need this data)
-hermai registry pull airbnb.com --intent "searching SF rentals for a weekend trip"
+# 2. Pull the full package (API key + intent required)
+curl -H "Authorization: Bearer $HERMAI_KEY" \
+     -H "X-Hermai-Intent: searching SF rentals for a weekend trip" \
+     "https://api.hermai.ai/v1/schemas/airbnb.com/package"
+```
 
-# 3. For simple read endpoints, call the HTTP endpoints directly with curl or fetch.
-#    For authenticated writes or signed requests, use `hermai action`:
+The pulled schema gives you `endpoints[]` (reads) and `actions[]` (writes). Each carries `method`, `url_template`, `headers`, `body_template` (for actions), and `response_schema`. Fill `{{var}}` placeholders with user arguments, send the HTTP request yourself.
+
+API key at https://hermai.ai/dashboard (GitHub sign-in). Anonymous access works at 5 req/hr; authenticated at 50 req/hr.
+
+Full HTTP reference — every endpoint, error codes, paging, and curl examples: [references/api.md](references/api.md).
+
+## Using the CLI (optional, terminal only)
+
+If the user's environment has a terminal and the `hermai` binary installed, the CLI handles cookies and per-request signing automatically:
+
+```bash
+hermai registry pull airbnb.com --intent "..."
 hermai action x.com CreateDraftTweet --arg text="drafted by hermai"
 ```
 
-Anonymous access works at 5 req/hr. For 50 req/hr and authenticated endpoints, grab an API key at https://hermai.ai/dashboard (GitHub sign-in).
+Install: `go install github.com/hermai-ai/hermai-cli/cmd/hermai@latest`. CLI reference: [references/cli.md](references/cli.md).
 
-Each schema has `endpoints` (reads) and `actions` (writes). Read endpoints document `method`, `url_template`, `query_params`, `headers`, `response_schema` — fill placeholders and call directly. Actions carry a `body_template` and may have a `runtime` block with signer/bootstrap JS the CLI runs for you. See [references/runtime.md](references/runtime.md) for the runtime details.
+## Signed writes — CLI required today
 
-**Actions perform real writes.** Posting a tweet, placing an order, or sending a DM via `hermai action` is not a dry run. Confirm with the user before invoking any non-read endpoint, and never chain actions autonomously without explicit approval.
+A small number of sites (X's `x-client-transaction-id`, TikTok's `X-Bogus`, Xiaohongshu's `X-s`/`X-t`) require a value computed per request by a small JS signer the schema ships in its `runtime.signer_js` block. The sandboxed JS engine that executes these lives in the CLI today, so API-only agents will hit 401/403 on those specific write actions until a hosted signing service ships (Phase 2).
+
+If the pulled schema has no `runtime` block, or has one with `requires_signer: false` on the card, every action is callable from any HTTP client. If `requires_signer: true`, tell the user that action needs the CLI or a future hosted-signing endpoint.
+
+Reads are never signed — every read endpoint in the registry works from any HTTP client.
+
+**Actions perform real writes.** Posting a tweet, placing an order, or sending a DM is not a dry run. Confirm with the user before invoking any non-read endpoint, and never chain actions autonomously without explicit approval.
 
 ## The intent requirement
 
@@ -41,7 +62,11 @@ Bad: `"get data"`
 
 ## When a site needs a browser session
 
-If the schema has a `session` block (Cloudflare / DataDome / PerimeterX / signed sites), warm cookies in this order: `hermai session import <site>` (reads from the user's installed browser — default choice) → `hermai session bootstrap <site> --headful` (opens Chrome, navigates, captures) → hosted bootstrap (Phase 2, not yet available). `hermai action` then handles cookie loading, signer/bootstrap JS, and rotation automatically.
+Many sites gate APIs behind Cloudflare / DataDome / PerimeterX or require session cookies. The schema's `session` block lists which cookies you need and (when relevant) a `bootstrap_url` the page fetches.
+
+**API-only agents** (Claude Web, remote bots, anything without a terminal): ask the user to paste the required cookies (DevTools → Application → Cookies → copy the values listed in `session.required_cookies`). Attach as a single `Cookie: name=value; name=value` header on every request. On 401/403, ask for a fresh paste — tokens like `_px3` (PerimeterX) or `msToken` (TikTok) rotate in hours.
+
+**CLI users** (terminal): `hermai session import <site>` reads the cookies from the user's installed browser automatically; `hermai session bootstrap <site> --headful` warms a cold session; `hermai action` threads everything through on every call, rotating `Set-Cookie` back to disk on 2xx responses.
 
 Full ladder, cookie-rotation rules, and the `session` block spec: [references/sessions.md](references/sessions.md).
 
