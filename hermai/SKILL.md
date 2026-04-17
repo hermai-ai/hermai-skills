@@ -13,12 +13,16 @@ Hermai is a registry of website-API schemas that agents call over a public HTTP 
 ## Quick start (consumer, HTTP)
 
 ```bash
-# 1. Search the catalog (public, no auth)
+# 1. Search the catalog (public, no auth; anon capped at 5 req/hr per IP)
 curl "https://api.hermai.ai/v1/schemas?q=airbnb"
 
-# 2. Pull the full package (API key + intent required)
+# 2. Pull the full package. Requires an API key AND an intent —
+#    the intent is a one-sentence description of what the USER is
+#    actually trying to do, written in their voice. Don't copy the
+#    string below; replace it with the real task. Requirements:
+#    20+ chars, 5+ distinct words. Example:
 curl -H "Authorization: Bearer $HERMAI_KEY" \
-     -H "X-Hermai-Intent: searching SF rentals for a weekend trip" \
+     -H "X-Hermai-Intent: <describe what the user is trying to accomplish — e.g., searching SF rentals for a weekend trip>" \
      "https://api.hermai.ai/v1/schemas/airbnb.com/package"
 ```
 
@@ -30,10 +34,10 @@ Full HTTP reference — every endpoint, error codes, paging, and curl examples: 
 
 ## Using the CLI (optional, terminal only)
 
-If the user's environment has a terminal and the `hermai` binary installed, the CLI handles cookies and per-request signing automatically:
+If the user's environment has a terminal and the `hermai` binary installed, the CLI handles cookies and per-request signing automatically. Same intent rule applies — `--intent` must describe what the USER is trying to do, not what the CLI does:
 
 ```bash
-hermai registry pull airbnb.com --intent "..."
+hermai registry pull airbnb.com --intent "<one-sentence user goal, 20+ chars>"
 hermai action x.com CreateDraftTweet --arg text="drafted by hermai"
 ```
 
