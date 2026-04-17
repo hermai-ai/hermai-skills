@@ -4,6 +4,14 @@ A running list of e-commerce, CMS, and social platforms with their conventions. 
 
 This list is not exhaustive. Add entries as you encounter new platforms. The authoritative list belongs in the registry (future work) — this file is a community reference.
 
+## Contents
+
+- [E-commerce](#e-commerce)
+- [CMS](#cms)
+- [Social / UGC](#social--ugc)
+- [Framework signals](#framework-signals)
+- [Adding a new platform](#adding-a-new-platform)
+
 ## E-commerce
 
 ### Shopify
@@ -92,7 +100,7 @@ This list is not exhaustive. Add entries as you encounter new platforms. The aut
 
 - `__UNIVERSAL_DATA_FOR_REHYDRATION__` script tag
 - `SIGI_STATE` on older pages
-- APIs require session bootstrap + request signing — see [sessions.md](sessions.md)
+- APIs require session bootstrap + request signing — see [sessions.md](../sessions.md)
 
 ## Framework signals
 
