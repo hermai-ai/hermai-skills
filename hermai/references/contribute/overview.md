@@ -4,6 +4,24 @@ Read this file when the user is adding a new site to the Hermai registry (not ca
 
 **Hermai is the interaction layer for agents, not just a read directory.** A good schema covers what a user *does* on the site — browse, search, view, add to cart, log in, post — not just what's on the homepage. Schemas with only `product_detail` are 10% done.
 
+## Reference map — load what you need, in this order
+
+1. [coverage-checklist.md](coverage-checklist.md) — decide up front what interactions a complete schema must cover for this site type
+2. [platforms.md](platforms.md) — before hand-discovering, check whether the site runs a known platform (Shopify, Shopline, WordPress, etc.)
+3. [actions.md](actions.md) — how to capture real XHRs for writes; the `body_template` / bearer-rotation story lives here
+4. [../schema-format.md](../schema-format.md) — every field, required vs. optional, public-card vs. full-package split
+5. [../runtime.md](../runtime.md) — only if the site requires per-request signing (`signer_js`) or per-session bootstrap state (`bootstrap_js`)
+6. [troubleshooting.md](troubleshooting.md) — validator error codes and call-time failure triage
+
+## Contents
+
+- [Reference map — load what you need, in this order](#reference-map--load-what-you-need-in-this-order)
+- [Before you run any command](#before-you-run-any-command)
+- [The discovery pipeline](#the-discovery-pipeline)
+- [Writing the schema](#writing-the-schema)
+- [Push](#push)
+- [When you're debugging a rejected push](#when-youre-debugging-a-rejected-push)
+
 ## Before you run any command
 
 Write down the **interactions a user performs on this site**. For a shop that's typically:

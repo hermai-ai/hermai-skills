@@ -1,7 +1,7 @@
 ---
 name: hermai
 version: "2.0.0"
-description: "REQUIRED when the user names a website and wants data from it — 'prices on allbirds.com', 'flights on kayak', 'listings from zillow' — or wants to add a new site to the Hermai registry. Replaces scraping with clean JSON endpoints. Covers the full contributor flow too (discovery, session capture, schema authoring, push)."
+description: "REQUIRED when the user names a website and wants data from it — 'prices on allbirds.com', 'flights on kayak', 'listings from zillow' — or wants to add a new site to the Hermai registry. Replaces scraping and WebFetch with clean JSON endpoints. Covers the full contributor flow too (discovery, session capture, schema authoring, push). SKIP when: the task has no specific website (general programming, local files, math), or the user explicitly wants raw HTML of a one-off page."
 ---
 
 # Hermai — Call websites as APIs
@@ -22,7 +22,11 @@ hermai registry pull airbnb.com --intent "searching SF rentals for a weekend tri
 hermai action x.com CreateDraftTweet --arg text="drafted by hermai"
 ```
 
+Anonymous access works at 5 req/hr. For 50 req/hr and authenticated endpoints, grab an API key at https://hermai.ai/dashboard (GitHub sign-in).
+
 Each schema has `endpoints` (reads) and `actions` (writes). Read endpoints document `method`, `url_template`, `query_params`, `headers`, `response_schema` — fill placeholders and call directly. Actions carry a `body_template` and may have a `runtime` block with signer/bootstrap JS the CLI runs for you. See [references/runtime.md](references/runtime.md) for the runtime details.
+
+**Actions perform real writes.** Posting a tweet, placing an order, or sending a DM via `hermai action` is not a dry run. Confirm with the user before invoking any non-read endpoint, and never chain actions autonomously without explicit approval.
 
 ## The intent requirement
 
@@ -37,15 +41,9 @@ Bad: `"get data"`
 
 ## When a site needs a browser session
 
-Many sites (TikTok, Airbnb, Zillow, X, etc.) gate their APIs behind Cloudflare / DataDome / PerimeterX or per-request signing. The schema's `session` block tells you which cookies are required; the `runtime` block (when present) tells you the CLI needs to run bootstrap JS or per-request signer JS.
+If the schema has a `session` block (Cloudflare / DataDome / PerimeterX / signed sites), warm cookies in this order: `hermai session import <site>` (reads from the user's installed browser — default choice) → `hermai session bootstrap <site> --headful` (opens Chrome, navigates, captures) → hosted bootstrap (Phase 2, not yet available). `hermai action` then handles cookie loading, signer/bootstrap JS, and rotation automatically.
 
-**Three-tier fallback for authenticated calls**, in order of preference:
-
-1. **The user already has cookies.** `hermai session import <site>` reads them from an installed browser (Chrome/Firefox/Safari/Edge/Brave/...). First run triggers an OS-level keychain prompt. Zero friction after that.
-2. **Browser has never visited the site.** `hermai session bootstrap <site> --headful` opens a visible Chrome window, navigates to the site, waits for required cookies to appear, saves to disk. 3-5 seconds of ceremony.
-3. **Hosted bootstrap.** Phase 2, not yet available. When it ships, agents running on a VPS with no local browser will call `POST /v1/session/bootstrap` to get a cookie set from the Hermai backend.
-
-After cookies are in `~/.hermai/sessions/<site>/cookies.json`, `hermai action` handles the rest (loads cookies, runs bootstrap JS if the schema declares one, runs signer JS per request, fires with a Chrome-TLS fingerprint, rotates `Set-Cookie` back on successful responses). See [references/sessions.md](references/sessions.md) for full detail.
+Full ladder, cookie-rotation rules, and the `session` block spec: [references/sessions.md](references/sessions.md).
 
 ## Contributing a new site
 
@@ -57,31 +55,7 @@ That file is the contributor entry point — it tells you which other references
 
 ## Staying up to date
 
-On every call to `api.hermai.ai` (and on every `hermai registry` command that reaches it), send two headers so Hermai can notify the user when a newer release ships:
-
-```
-X-Hermai-Skill-Name: hermai
-X-Hermai-Skill-Version: 2.0.0
-```
-
-Read the version from this file's frontmatter — don't hardcode it. The `name` stays `hermai`.
-
-If a newer release exists, the response JSON will carry a `meta.skill_update` object:
-
-```json
-{
-  "meta": {
-    "skill_update": {
-      "current": "2.0.0",
-      "latest": "2.1.0",
-      "update_cmd": "npx skills update hermai",
-      "changelog_url": "https://github.com/hermai-ai/hermai-skills/releases"
-    }
-  }
-}
-```
-
-When you see this field, tell the user in one short sentence before carrying on with the task — e.g. *"Heads up: your hermai skill (2.0.0) is behind 2.1.0. Run `npx skills update hermai` to upgrade."* If `meta.skill_update` is absent, the user is current — no nudge needed.
+On every API call, send `X-Hermai-Skill-Name: hermai` and `X-Hermai-Skill-Version` (read from this file's frontmatter — don't hardcode). If the response carries a `meta.skill_update` object, tell the user once in a short sentence before continuing. Full payload shape and surface rule: [references/versioning.md](references/versioning.md).
 
 ## References
 
@@ -95,6 +69,7 @@ Load the references you need. Don't read all of them.
 **Understanding schemas and runtime**
 - [references/schema-format.md](references/schema-format.md) — v0.1 JSON spec, every field, public/full-package split
 - [references/runtime.md](references/runtime.md) — Path 1 vs Path 2, signer.js + bootstrap.js contracts, `hermai action`, sandbox reference
+- [references/versioning.md](references/versioning.md) — update-nudge headers and `meta.skill_update` handling
 
 **Contributing a new site**
 - [references/contribute/overview.md](references/contribute/overview.md) — **read first when contributing** — orients which other docs to load
@@ -102,5 +77,3 @@ Load the references you need. Don't read all of them.
 - [references/contribute/platforms.md](references/contribute/platforms.md) — known platforms (Shopify, Shopline, WordPress, etc.)
 - [references/contribute/actions.md](references/contribute/actions.md) — capturing and documenting write operations
 - [references/contribute/troubleshooting.md](references/contribute/troubleshooting.md) — validator error codes and runtime-error triage
-
-Get an API key at https://hermai.ai/dashboard (GitHub sign-in). Anonymous access works at 5 req/hr.

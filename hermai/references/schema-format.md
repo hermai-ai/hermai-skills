@@ -2,6 +2,19 @@
 
 The registry stores a schema as a single JSON document. Every field in this reference is either required, optional-and-projected-onto-the-public-card, or paywalled-inside-the-full-package. Get the split right and the schema does two jobs at once: it tells an unauthenticated browser "is this useful?" and it tells an authenticated CLI "here is exactly how to call the site."
 
+## Contents
+
+- [Example](#example)
+- [Naming rule](#naming-rule)
+- [Required fields](#required-fields)
+- [Categories](#categories)
+- [Top-level blocks](#top-level-blocks)
+- [The `runtime` block](#the-runtime-block)
+- [Actions and `body_template`](#actions-and-body_template)
+- [Public card vs. full package](#public-card-vs-full-package)
+- [Description rules](#description-rules)
+- [Verified, not wishful](#verified-not-wishful)
+
 ## Example
 
 ```json

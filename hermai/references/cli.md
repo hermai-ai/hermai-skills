@@ -4,6 +4,19 @@ The `hermai` CLI is the local half of Hermai: it talks to the hosted registry ov
 
 This page documents every command shipped by the binary. See [schema-format.md](schema-format.md) for the schema shape, [sessions.md](sessions.md) for session handling, [runtime.md](runtime.md) for the executable glue inside a schema, and [contribute/overview.md](contribute/overview.md) for the schema-authoring flow.
 
+## Contents
+
+- [Install](#install)
+- [Authenticate](#authenticate)
+- [Discovery commands](#discovery-commands)
+- [Sessions](#sessions)
+- [Action dispatch](#action-dispatch)
+- [Registry](#registry)
+- [Local cache and introspection](#local-cache-and-introspection)
+- [Phase-2 commands (gated)](#phase-2-commands-gated)
+- [Exit codes](#exit-codes)
+- [Cross-references](#cross-references)
+
 ## Install
 
 ```bash

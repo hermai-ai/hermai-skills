@@ -2,6 +2,20 @@
 
 Hermai's vision is the **interaction layer** for agents — not just data extraction. Actions (POST/PUT/DELETE) are first-class. A schema with only read endpoints is incomplete.
 
+## Contents
+
+- [Why this is harder than reads](#why-this-is-harder-than-reads)
+- [The production path: capture the body, don't guess it](#the-production-path-capture-the-body-dont-guess-it)
+- [When the write needs per-request signing](#when-the-write-needs-per-request-signing)
+- [The CSRF token problem](#the-csrf-token-problem)
+- [The authenticated session problem](#the-authenticated-session-problem)
+- [Credential placeholders](#credential-placeholders)
+- [Idempotency](#idempotency)
+- [Testing a write schema](#testing-a-write-schema)
+- [Bearer rotation](#bearer-rotation)
+- [What's out of scope](#whats-out-of-scope)
+- [Known gap](#known-gap)
+
 ## Why this is harder than reads
 
 Read endpoints are idempotent and stateless — point the agent at the URL, get data, done. Writes are different:

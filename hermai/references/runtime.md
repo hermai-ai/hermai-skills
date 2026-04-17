@@ -6,6 +6,19 @@ The `runtime` block moves that work client-side in a way the CLI can execute wit
 
 See [schema-format.md](schema-format.md) for the surrounding fields, [sessions.md](sessions.md) for cookie storage, and [cli.md](cli.md) for the full command reference.
 
+## Contents
+
+- [1. What "runtime" means in a schema](#1-what-runtime-means-in-a-schema)
+- [2. Path 1 vs Path 2](#2-path-1-vs-path-2)
+- [3. The signer contract](#3-the-signer-contract)
+- [4. The bootstrap contract](#4-the-bootstrap-contract)
+- [5. The `hermai.*` sandbox](#5-the-hermai-sandbox)
+- [6. `allowed_hosts`](#6-allowed_hosts)
+- [7. The `hermai action` command](#7-the-hermai-action-command)
+- [8. Triage](#8-triage)
+- [9. What the runtime does NOT cover](#9-what-the-runtime-does-not-cover)
+- [10. Canonical example: x.com](#10-canonical-example-xcom)
+
 ## 1. What "runtime" means in a schema
 
 `runtime` is an optional top-level block on a schema:

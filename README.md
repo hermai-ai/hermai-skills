@@ -42,6 +42,7 @@ hermai/                              # the skill
     sessions.md                      session handling, cookie import, headful bootstrap
     schema-format.md                 v0.1 JSON spec, every field
     runtime.md                       Path 1 vs Path 2, signer.js + bootstrap.js contracts
+    versioning.md                    update-nudge headers + meta.skill_update payload
     contribute/
       overview.md                    start-here for contributors
       coverage-checklist.md          interaction checklist by site type
@@ -54,6 +55,8 @@ hermai-contribute/                   # deprecation shim — points new installs 
 ```
 
 Each skill is a directory containing a `SKILL.md` with YAML frontmatter (`name`, `version`, `description`). References under `references/` are loaded on demand via progressive disclosure — they don't bloat the agent's context until the skill directs it to read them.
+
+> **Note on `version`:** Anthropic's skill spec defines `name` and `description` only. The `version` field here is a hermai-specific convention used by the update-nudge flow in [`hermai/references/versioning.md`](./hermai/references/versioning.md) — it's not required by the Claude Code / Agent Skills runtime.
 
 ## Links
 

@@ -4,6 +4,14 @@ A running list of e-commerce, CMS, and social platforms with their conventions. 
 
 This list is not exhaustive. Add entries as you encounter new platforms. The authoritative list belongs in the registry (future work) — this file is a community reference.
 
+## Contents
+
+- [E-commerce](#e-commerce)
+- [CMS](#cms)
+- [Social / UGC](#social--ugc)
+- [Framework signals](#framework-signals)
+- [Adding a new platform](#adding-a-new-platform)
+
 ## E-commerce
 
 ### Shopify

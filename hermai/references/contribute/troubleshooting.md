@@ -2,6 +2,12 @@
 
 Two classes of error show up when working on a schema: **push-side validator errors** (the API rejected a push because the schema itself is malformed or policy-violating) and **call-time runtime errors** (the schema pushed, but `hermai action` or `hermai fetch` can't successfully talk to the site). They need different diagnostic moves.
 
+## Contents
+
+- [Push-side validator errors](#push-side-validator-errors)
+- [Call-time runtime errors](#call-time-runtime-errors)
+- [Common fix patterns](#common-fix-patterns)
+
 ## Push-side validator errors
 
 When `hermai registry push` fails, the API returns a code. Each is a specific sentinel — no string parsing required.
