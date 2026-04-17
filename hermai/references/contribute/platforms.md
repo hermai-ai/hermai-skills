@@ -92,7 +92,7 @@ This list is not exhaustive. Add entries as you encounter new platforms. The aut
 
 - `__UNIVERSAL_DATA_FOR_REHYDRATION__` script tag
 - `SIGI_STATE` on older pages
-- APIs require session bootstrap + request signing — see [sessions.md](sessions.md)
+- APIs require session bootstrap + request signing — see [sessions.md](../sessions.md)
 
 ## Framework signals
 
