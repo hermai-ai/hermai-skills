@@ -1,6 +1,6 @@
 ---
 name: hermai-contribute
-version: "1.0.0"
+version: "1.1.0"
 description: "REQUIRED when the user wants to add a website to the Hermai registry, contribute a schema, reverse-engineer a site's API, or push a new endpoint set. Also REQUIRED when the user asks about Hermai schema format, intent categories, session blocks for anti-bot sites, or why a push was rejected. For calling already-registered sites, use the hermai skill instead."
 ---
 
@@ -107,6 +107,50 @@ Intercept is the tool for anything that updates dynamically — search-as-you-ty
 Read-only schemas are 50% of the value. Capture writes too — login, add-to-cart, submit review. This is where `intercept` shines: perform the action in the browser and capture the POST request. See [references/actions.md](references/actions.md) for how to document write operations.
 
 The `extract` command recognizes 13 embedded patterns: `ytInitialData`, `ytInitialPlayerResponse`, `__NEXT_DATA__`, `__UNIVERSAL_DATA_FOR_REHYDRATION__`, `SIGI_STATE`, `__APOLLO_STATE__`, `__PRELOADED_STATE__`, `__remixContext`, `__NUXT__`, `__NUXT_DATA__`, `__FRONTITY_CONNECT_STATE__`, `__MODERN_ROUTER_DATA__`, `__INITIAL_STATE__`.
+
+**Phase 4: Verify every extraction path against the live page — BEFORE writing the schema.**
+
+**This is a hard rule, not a style guideline.** Every CSS selector, jq path, regex, parse path, JSON key, or script-tag id you put in an endpoint's `description` must be live-verified to return the data you claim it returns. "Wishful selectors" — class names you *saw in a grep* or *guessed from a pattern* — are the #1 source of broken schemas.
+
+**What "verified" means, concretely:**
+
+1. **For CSS/DOM selectors**: run the selector against the downloaded HTML and print the matches. If you claim `.race-date` contains race dates, `grep -oE '<[^>]+class="[^"]*race-date[^"]*"[^>]*>[^<]+</` must return actual date strings. If it returns nothing or garbage, the selector is wrong — find the real one by looking at the live DOM around the data you want.
+2. **For JSON parse paths**: download the response and run the path. If you claim `props.pageProps.aboveTheFoldData.title`, `jq '.props.pageProps.aboveTheFoldData.title'` (or Python equivalent) must return a non-null value. Empty/null/missing = wrong path.
+3. **For regex patterns**: run the regex against the real input and confirm the capture groups produce the claimed values.
+4. **For JSON-LD**: confirm `<script type="application/ld+json">` with the claimed `@type` actually exists on the page, and that the keys you name (`offers.price`, `aggregateRating.ratingValue`) are present.
+
+**Common failure pattern to avoid:**
+
+1. You grep the HTML for class names and see `race-date`, `race-time`, `race-day` appear somewhere.
+2. You write `description: "Parse .race-date, .race-time, .race-day for each Grand Prix"`.
+3. Turns out those classes are CSS-only helpers used by other parts of the page; the actual data lives in `<h4 class="text-on-t-stat-label-major">` siblings inside `.f1-highlight-grid-item` blocks.
+4. Your schema is wrong — looks plausible, doesn't work.
+
+**Correct workflow: extract, don't guess.**
+
+```bash
+# After downloading the HTML, find the real selectors that wrap the data.
+# Pick one concrete data point (e.g. "Bahrain") and look at its surrounding DOM:
+grep -c 'Bahrain' page.html                                   # confirm the word is in the page
+python3 -c "
+import re
+html = open('page.html').read()
+# Show 500 chars before+after the concrete value
+for m in re.finditer(r'.{200}Bahrain.{500}', html):
+    print(m.group(0)); break
+"
+# Now you see the ACTUAL wrapping element + nearby siblings.
+# THAT's what goes in description — not what you hoped the class was called.
+```
+
+**Before saving the schema, run one final extraction test per endpoint:**
+
+```bash
+# For every selector / parse path / regex in description, extract and print samples.
+# If a selector returns 0 matches, fix it or drop the claim. Never ship unverified.
+```
+
+If the data you want isn't reachable with any selector you can find — that's an answer too. Either the data is loaded dynamically (use `hermai intercept` to find the real XHR) or it's not actually exposed on that page.
 
 ## Writing descriptions (public vs. private split)
 
