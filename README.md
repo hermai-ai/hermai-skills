@@ -15,7 +15,7 @@ npx skills add hermai-ai/hermai-skills --skill hermai -a claude-code
 
 Works with Claude Code, Codex, Cursor, OpenCode, and 40+ other agents via the [Vercel skills CLI](https://github.com/vercel-labs/skills).
 
-> **Migrating from 1.x?** `hermai-contribute` merged into `hermai` in 2.0. If you have it installed, run `npx skills update hermai` and `npx skills remove hermai-contribute`. Both audiences (callers and contributors) are now served by the single `hermai` skill via progressive disclosure — contributor references live under `references/contribute/` and load only when needed.
+Both audiences (callers and contributors) are served by the single `hermai` skill via progressive disclosure — contributor references live under `references/contribute/` and load only when needed.
 
 ## What the skill does
 
@@ -49,12 +49,9 @@ hermai/                              # the skill
       platforms.md                   known platforms (Shopify, Shopline, WordPress, WACA)
       actions.md                     capturing and documenting write operations
       troubleshooting.md             validator error codes + runtime-error triage
-
-hermai-contribute/                   # deprecation shim — points new installs at hermai
-  SKILL.md
 ```
 
-Each skill is a directory containing a `SKILL.md` with YAML frontmatter (`name`, `version`, `description`). References under `references/` are loaded on demand via progressive disclosure — they don't bloat the agent's context until the skill directs it to read them.
+The skill is a directory containing a `SKILL.md` with YAML frontmatter (`name`, `version`, `description`). References under `references/` are loaded on demand via progressive disclosure — they don't bloat the agent's context until the skill directs it to read them.
 
 > **Note on `version`:** Anthropic's skill spec defines `name` and `description` only. The `version` field here is a hermai-specific convention used by the update-nudge flow in [`hermai/references/versioning.md`](./hermai/references/versioning.md) — it's not required by the Claude Code / Agent Skills runtime.
 
