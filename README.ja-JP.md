@@ -15,7 +15,7 @@ npx skills add hermai-ai/hermai -a claude-code
 
 Claude Code、Codex、Cursor、OpenCode、その他 40 以上の agent で、[Vercel skills CLI](https://github.com/vercel-labs/skills) を通じて利用できます。
 
-> **1.x からの移行について:** `hermai-contribute` は 2.0 で `hermai` に統合されました。既にインストール済みの場合は `npx skills update hermai` を実行し、`npx skills remove hermai-contribute` で旧スキルを削除してください。利用者と貢献者の両方が、プログレッシブディスクロージャにより単一の `hermai` スキルで対応されるようになりました。貢献者向けリファレンスは `references/contribute/` 配下に配置され、必要なときにのみ読み込まれます。
+利用者と貢献者の両方が、プログレッシブディスクロージャにより単一の `hermai` スキルで対応されます。貢献者向けリファレンスは `references/contribute/` 配下に配置され、必要なときにのみ読み込まれます。
 
 ## このスキルでできること
 
@@ -49,12 +49,9 @@ hermai/                              # スキル本体
       platforms.md                   既知のプラットフォーム (Shopify, Shopline, WordPress, WACA)
       actions.md                     書き込み操作のキャプチャとドキュメント化
       troubleshooting.md             バリデーターエラーコード + ランタイムエラーのトリアージ
-
-hermai-contribute/                   # 非推奨シム — 新規インストールを hermai に誘導
-  SKILL.md
 ```
 
-各スキルは、YAML frontmatter (`name`、`version`、`description`) を持つ `SKILL.md` を含むディレクトリです。`references/` 配下のリファレンスは、プログレッシブディスクロージャにより必要に応じて読み込まれます。スキルが指示するまで agent のコンテキストを圧迫しません。
+スキルは、YAML frontmatter (`name`、`version`、`description`) を持つ `SKILL.md` を含むディレクトリです。`references/` 配下のリファレンスは、プログレッシブディスクロージャにより必要に応じて読み込まれます。スキルが指示するまで agent のコンテキストを圧迫しません。
 
 > **`version` についての補足:** Anthropic のスキル仕様では `name` と `description` のみが定義されています。ここでの `version` フィールドは、[`hermai/references/versioning.md`](./hermai/references/versioning.md) の update-nudge フローで使用される hermai 独自の慣例であり、Claude Code / Agent Skills ランタイムでは必須ではありません。
 

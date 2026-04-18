@@ -15,7 +15,7 @@ npx skills add hermai-ai/hermai-skills --skill hermai -a claude-code
 
 透過 [Vercel skills CLI](https://github.com/vercel-labs/skills) 支援 Claude Code、Codex、Cursor、OpenCode 以及其他 40 種以上的 agent。
 
-> **從 1.x 升級?** `hermai-contribute` 在 2.0 併入了 `hermai`。如果你已經安裝了它,請執行 `npx skills update hermai` 與 `npx skills remove hermai-contribute`。現在兩類使用者(呼叫者與貢獻者)都由單一的 `hermai` skill 透過 progressive disclosure 服務 — 貢獻者用的 references 放在 `references/contribute/` 下,只有需要時才載入。
+兩類使用者(呼叫者與貢獻者)都由單一的 `hermai` skill 透過 progressive disclosure 服務 — 貢獻者用的 references 放在 `references/contribute/` 下,只有需要時才載入。
 
 ## Skill 做什麼
 
@@ -49,12 +49,9 @@ hermai/                              # skill 本體
       platforms.md                   已知平台(Shopify、Shopline、WordPress、WACA)
       actions.md                     擷取與記錄寫入操作
       troubleshooting.md             驗證錯誤代碼 + runtime 錯誤排查
-
-hermai-contribute/                   # 棄用 shim — 將新安裝導向 hermai
-  SKILL.md
 ```
 
-每個 skill 都是一個資料夾,內含一份帶有 YAML frontmatter(`name`、`version`、`description`)的 `SKILL.md`。`references/` 下的檔案透過 progressive disclosure 按需載入 — 在 skill 明確引導之前,不會佔用 agent 的 context。
+Skill 是一個資料夾,內含一份帶有 YAML frontmatter(`name`、`version`、`description`)的 `SKILL.md`。`references/` 下的檔案透過 progressive disclosure 按需載入 — 在 skill 明確引導之前,不會佔用 agent 的 context。
 
 > **關於 `version` 欄位:** Anthropic 的 skill 規格只定義 `name` 與 `description`。這裡的 `version` 欄位是 hermai 專用的慣例,用於 [`hermai/references/versioning.md`](./hermai/references/versioning.md) 中的更新提示流程 — 並不是 Claude Code / Agent Skills runtime 所要求的。
 
