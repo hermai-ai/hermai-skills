@@ -7,10 +7,10 @@ The `hermai` agent skill for the [Hermai](https://hermai.ai) registry — "Googl
 ## Install
 
 ```bash
-npx skills add hermai-ai/hermai
+npx skills add hermai-ai/hermai-skills --skill hermai
 
 # target a specific agent
-npx skills add hermai-ai/hermai -a claude-code
+npx skills add hermai-ai/hermai-skills --skill hermai -a claude-code
 ```
 
 Works with Claude Code, Codex, Cursor, OpenCode, and 40+ other agents via the [Vercel skills CLI](https://github.com/vercel-labs/skills).
