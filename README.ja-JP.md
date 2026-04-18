@@ -7,10 +7,10 @@
 ## インストール
 
 ```bash
-npx skills add hermai-ai/hermai
+npx skills add hermai-ai/hermai-skills --skill hermai
 
 # 特定の agent を対象にする
-npx skills add hermai-ai/hermai -a claude-code
+npx skills add hermai-ai/hermai-skills --skill hermai -a claude-code
 ```
 
 Claude Code、Codex、Cursor、OpenCode、その他 40 以上の agent で、[Vercel skills CLI](https://github.com/vercel-labs/skills) を通じて利用できます。
