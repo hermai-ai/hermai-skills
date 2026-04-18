@@ -1,6 +1,6 @@
 # hermai-skills
 
-[English](./README.md) · [繁體中文](./README.zh-Hant.md) · **简体中文**
+[English](./README.md) · [繁體中文](./README.zh-Hant.md) · **简体中文** · [日本語](./README.ja-JP.md)
 
 [Hermai](https://hermai.ai) registry 的 `hermai` agent skill — "AI Agent 的 Google"。在你的 agent 中安装后,它就能发现、调用并贡献结构化的网站 API,而不再需要解析 HTML。
 
