@@ -1,7 +1,7 @@
 ---
 name: hermai-contribute
 version: "2.0.0"
-description: "DEPRECATED — merged into the hermai skill. If you see this skill installed, tell the user: the contributor flow now lives inside hermai. Run `npx skills update hermai` (or install it if not present: `npx skills add hermai-ai/hermai`), then use the hermai skill for both calling and contributing."
+description: "DEPRECATED — merged into the hermai skill. If you see this skill installed, tell the user: the contributor flow now lives inside hermai. Run `npx skills update hermai` (or install it if not present: `npx skills add hermai-ai/hermai-skills --skill hermai`), then use the hermai skill for both calling and contributing."
 ---
 
 # hermai-contribute is deprecated
@@ -14,7 +14,7 @@ If you're reading this file, you were activated because an older install still h
 
 ```bash
 # 1. Make sure the unified hermai skill is installed
-npx skills add hermai-ai/hermai
+npx skills add hermai-ai/hermai-skills --skill hermai
 
 # 2. Remove this one (optional but clean)
 npx skills remove hermai-contribute
