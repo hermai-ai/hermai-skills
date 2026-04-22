@@ -134,7 +134,7 @@ What stays in the full package only, behind the API-key + intent paywall:
 
 This is a deliberate security boundary. Signer source is the piece a competitor would most want — ship it on a public endpoint and anyone can rebuild the site's client without ever paying for an API key. Keep it paywalled, publish only the shape (`requires_signer: true, allowed_hosts: [...]`) so callers can make informed decisions.
 
-## Actions and `body_template`
+## `body_template` — on actions *and* non-trivial POST reads
 
 Write endpoints (POST/PUT/DELETE for "do a thing", not just "fetch") live under the top-level `actions` array. Each action carries the same `name`, `method`, `url_template`, `params` shape as an endpoint, plus one new field worth calling out here:
 
@@ -161,6 +161,12 @@ The string is used **verbatim** as the request body after `{{var}}` substitution
 
 When `body_template` is absent, the runner falls back to JSON-marshaling every `Param` with `"in": "body"` into a flat object. That's fine for trivial APIs but wrong for almost every real-world GraphQL or RPC endpoint, where the server cares about nested structure and extra fields. **Capture the real body, paste it into `body_template`, replace user-varying values with `{{var}}` placeholders.** Don't hand-write the shape. See [contribute/actions.md](contribute/actions.md) for the full capture flow.
 
+### Reads that POST a body (e.g. GraphQL) need `body_template` too
+
+`body_template` isn't limited to `actions[]`. Any **`endpoints[]`** entry whose request body is non-trivial — the common case is a GraphQL read that POSTs `{operationName, query, variables}` to `/graphql` — must ship a `body_template` as well. If you don't, every downstream caller has to run `hermai intercept` themselves just to discover the query string, which defeats the point of publishing the schema. The runner applies the same `{{var}}` substitution rules for endpoints and actions.
+
+Rule of thumb: if the method is POST and you captured a body, paste the body into `body_template` regardless of whether it's an endpoint or an action. The only reads that skip `body_template` are plain GET/HEAD calls and POSTs whose body truly is a flat `{"key": "{{value}}"}` — and even then, shipping the template is cheaper than betting the default flat-marshal is right.
+
 ### Why `body_template` matters for the public/private split
 
 `body_template` is a paywalled field — it lives in the full package only, never on the public card. The template is a direct map of the site's internal API contract, and that's exactly what the paywall is there to protect.
@@ -181,6 +187,7 @@ You can't change what's projected. But knowing the rules prevents two mistakes: 
 | `endpoints[].url_template` | **No** — paywalled | Yes |
 | `endpoints[].headers` (values) | **No** — paywalled | Yes |
 | `endpoints[].variables`, `query_params`, `response_schema` | **No** — paywalled | Yes |
+| `endpoints[].body_template` | **No** — paywalled | Yes |
 | `endpoints[].has_auth` (derived) | **No** — learned post-pull | Yes |
 | `actions[].body_template` | **No** — paywalled | Yes |
 | `requires_stealth: true` | Yes — surfaces as "Requires browser" badge | Yes |

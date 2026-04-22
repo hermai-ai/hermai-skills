@@ -43,6 +43,8 @@ hermai intercept --headful --session x.com https://x.com/compose/post
 
 The captured JSON is the body the server expects. Take it **verbatim** and paste it into the action's `body_template`, replacing user-varying values with `{{var}}` placeholders. The CLI JSON-escapes substituted values, so user input can't break out of the surrounding string.
 
+> **Same rule for GraphQL reads under `endpoints[]`.** If the site loads a list, detail, or review page via `POST /graphql` (booking.com's `ReviewList` / `PropertyPage`, airbnb's `StaysSearch`, etc.), that's still a "captured body" situation — paste it into the endpoint's `body_template`. Ship the full query verbatim; parameterize only the variables. Skip this and every downstream caller has to re-run `hermai intercept` just to learn the 200-line query, which makes your schema a pointer to a HAR file instead of a usable contract. The field lives under `endpoints[]` exactly like it does under `actions[]`.
+
 ### Example: X CreateDraftTweet
 
 What the browser sends when you click "Save as draft":

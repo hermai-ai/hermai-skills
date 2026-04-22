@@ -26,7 +26,7 @@ curl -H "Authorization: Bearer $HERMAI_KEY" \
      "https://api.hermai.ai/v1/schemas/airbnb.com/package"
 ```
 
-The pulled schema gives you `endpoints[]` (reads) and `actions[]` (writes). Each carries `method`, `url_template`, `headers`, `body_template` (for actions), and `response_schema`. Fill `{{var}}` placeholders with user arguments, send the HTTP request yourself.
+The pulled schema gives you `endpoints[]` (reads) and `actions[]` (writes). Each carries `method`, `url_template`, `headers`, `response_schema`, and — for actions **and any POST read carrying a non-trivial body like GraphQL** — a `body_template`. Fill `{{var}}` placeholders with user arguments, send the HTTP request yourself.
 
 API key at https://hermai.ai/dashboard (GitHub sign-in). Anonymous access works at 5 req/hr; authenticated at 50 req/hr.
 
