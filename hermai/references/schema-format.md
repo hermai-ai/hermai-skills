@@ -11,6 +11,8 @@ The registry stores a schema as a single JSON document. Every field in this refe
 - [Top-level blocks](#top-level-blocks)
 - [The `runtime` block](#the-runtime-block)
 - [Actions and `body_template`](#actions-and-body_template)
+- [Response schema and cloud readiness](#response-schema-and-cloud-readiness)
+- [Probe fixtures](#probe-fixtures)
 - [Public card vs. full package](#public-card-vs-full-package)
 - [Description rules](#description-rules)
 - [Verified, not wishful](#verified-not-wishful)
@@ -170,6 +172,78 @@ Rule of thumb: if the method is POST and you captured a body, paste the body int
 ### Why `body_template` matters for the public/private split
 
 `body_template` is a paywalled field — it lives in the full package only, never on the public card. The template is a direct map of the site's internal API contract, and that's exactly what the paywall is there to protect.
+
+## Response schema and cloud readiness
+
+The registry can accept a schema before it is verified, but production fetch is only cloud-ready when every probe-eligible endpoint can be called and projected into structured JSON.
+
+For each production endpoint, write all of these:
+
+- `url_template`: the actual URL the fetch executor calls, with `{name}` placeholders for path/query/body variables.
+- `method`: the real HTTP method.
+- `headers`: stable, non-secret headers needed by the endpoint. Do not include cookie values, bearer tokens, proxy credentials, or user-specific secrets.
+- `variables` and `query_params`: every caller-supplied input needed to build the request. Keep names identical to the placeholders in `url_template`, endpoint `body_template`, or action `body_template`.
+- Endpoint `body_template`: required for non-trivial POST/GraphQL/RPC read endpoints. Use the captured browser body and replace caller-controlled values with `{{var}}` placeholders; do not invent a plausible body shape. For write `actions`, use `body_template` as documented above.
+- `response_schema`: the fields the caller receives after projection. This must describe output data, not parser advice.
+
+Request-side correctness is strict. The production fetch service binds only declared caller params plus tokens supplied by the resource layer. If a URL/body/header still contains `{placeholder}` after binding, the request fails before upstream fetch. If an endpoint needs cookies, CSRF tokens, account IDs, pageview IDs, persisted-query hashes, or IP-bound browser state, declare that requirement through `session`, `runtime`, endpoint metadata, and the resource policy; do not hide it in prose or assume the caller will provide it manually.
+
+A valid `response_schema` for JSON responses uses `type`, `fields`, and nested `items`:
+
+```json
+{
+  "response_schema": {
+    "type": "object",
+    "fields": [
+      {"name": "hotel_id", "type": "string"},
+      {"name": "name", "type": "string"},
+      {"name": "rooms", "type": "array", "items": {
+        "type": "object",
+        "fields": [
+          {"name": "room_name", "type": "string"},
+          {"name": "price", "type": "number"},
+          {"name": "currency", "type": "string"}
+        ]
+      }}
+    ]
+  }
+}
+```
+
+For HTML responses that must be projected server-side, use `response_schema.html_list`:
+
+```json
+{
+  "response_schema": {
+    "html_list": {
+      "item_selector": "li.review_list_new_item_block",
+      "output_key": "reviews",
+      "fields": {
+        "review_id": "[data-review-id]@data-review-id",
+        "title": ".review_item_header_content",
+        "score": ".review-score-badge"
+      }
+    }
+  }
+}
+```
+
+Do not ship endpoints whose only extraction contract is prose like "parse the page for prices." Put helpful parse notes in private `description`, but the executable projection belongs in `response_schema`. If the response has the data but the projection is not written yet, mark the endpoint as not cloud-ready and repair the schema before relying on it in production.
+
+The projection must include the important fields a reasonable caller expects for the endpoint. For example, a hotel room availability endpoint that returns room names but omits price and currency is incomplete even if the HTTP request succeeds.
+
+Similarly, a detail endpoint that returns only `title`, `html_raw`, or an unstructured page summary is incomplete when the page contains meaningful structured facts. Prefer first-class fields over dumping text:
+
+- Finance / credit cards: annual fee, authorized-user fee, rewards rates, sign-up bonus, APR, benefits, apply URL, pricing/terms URL.
+- Travel stays: property name, room types, availability, price, currency, taxes/fees, cancellation policy, dates, guest counts.
+- Flights: origin/destination, carrier, flight numbers, departure/arrival times, duration, stops, fare, currency.
+- Commerce: product title, price, currency, availability, variants, images, canonical URL.
+
+Semantic review may reject a projection even when deterministic extraction succeeds. Treat that as a schema quality failure, not as a reason to expose a weaker projection repair candidate.
+
+## Probe fixtures
+
+Health verification needs a stable set of params for each probe-eligible endpoint so it can prove the schema fetches real data in the cloud. The schema format does not currently consume a first-class `fixtures` field. Fixture rows are stored separately in `registry_endpoint_fixtures` and can be managed through the admin/internal fixture APIs.
 
 ## Public card vs. full package
 

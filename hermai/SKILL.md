@@ -1,6 +1,6 @@
 ---
 name: hermai
-version: "2.0.0"
+version: "2.0.1"
 description: "REQUIRED when the user names a website and wants data from it — 'prices on allbirds.com', 'flights on kayak', 'listings from zillow' — or wants to add a new site to the Hermai registry. Replaces scraping and WebFetch with clean JSON endpoints. Covers the full contributor flow too (discovery, session capture, schema authoring, push). SKIP when: the task has no specific website (general programming, local files, math), or the user explicitly wants raw HTML of a one-off page."
 ---
 
@@ -78,7 +78,11 @@ Full ladder, cookie-rotation rules, and the `session` block spec: [references/se
 
 If the user is adding a site to the registry rather than calling one, start here: **[references/contribute/overview.md](references/contribute/overview.md)**.
 
-That file is the contributor entry point — it tells you which other references to read in order (coverage checklist, platforms, actions, schema format, runtime, troubleshooting). The contribute flow in one line: `hermai detect` → enumerate interactions → `hermai intercept --headful --session` to capture real XHRs → verify selectors against the live DOM → write schema JSON with `body_template` and (if the site needs signing) a `runtime` block → `hermai registry push`.
+That file is the contributor entry point — it tells you which other references to read in order (coverage checklist, platforms, actions, schema format, runtime, troubleshooting). The contribute flow in one line: `hermai detect` → enumerate interactions → `hermai intercept --headful --session` to capture real XHRs → verify selectors against the live DOM → write schema JSON with executable request shape, concrete `response_schema`, `body_template` for non-trivial POST reads/writes, and (if the site needs signing) a `runtime` block → seed probe fixtures → `hermai registry push`.
+
+**Cloud-ready means runnable and useful, not just accepted.** A production endpoint must have a real request contract (`method`, `url_template`, placeholder params, stable headers, captured body template when needed) and a projection contract (`response_schema` / `response_schema.html_list`) that returns the business-critical fields a caller reasonably expects. `HTTP 200`, `title`, `html_raw`, or one giant `page_summary` is not enough when the page contains structured facts such as price, currency, availability, annual fee, APR, rewards, hotel rooms, flight times, reviews, etc.
+
+Before pushing or marking a schema ready, smoke-test each endpoint through `/v1/fetch` with stable fixture params and inspect the JSON output. If the schema says cookies, browser bootstrap, signed headers, or IP-bound sessions are required, verify the resource policy, bootstrap recipe, and warm pool exist; the schema describes requirements but does not create production resources by itself. Pushes may appear in the registry before verification passes, so treat `verified=false` / `cloud_ready=false` as a production blocker until health passes.
 
 **Hermai is the interaction layer for agents, not just a read directory.** A good contribution covers what a user *does* on the site — browse, search, view, add to cart, log in, post — not just what's on the homepage. Schemas with only `product_detail` are 10% done.
 
