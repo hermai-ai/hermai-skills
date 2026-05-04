@@ -118,6 +118,8 @@ If the data you want isn't reachable with any selector you can find — that's a
 
 Fields and shape: [schema-format.md](../schema-format.md). Public-card vs full-package split is a security boundary — keep extraction detail (parse paths, selectors, CSS) in private `description`, never in public `purpose` or top-level `description`. Agents reading the public card should learn *what* data is available, not *how* to grab it.
 
+Write all schema-facing text in English, including top-level descriptions, endpoint purposes, endpoint descriptions, action copy, session descriptions, field labels, and examples.
+
 Do not write prose-only schemas. Each production endpoint needs an executable request contract and a concrete projection contract:
 
 - Real `method`, `url_template`, stable non-secret `headers`, and all required `variables` / `query_params`.

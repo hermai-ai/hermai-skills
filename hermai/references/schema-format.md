@@ -279,6 +279,8 @@ You can't change what's projected. But knowing the rules prevents two mistakes: 
 
 Description fields follow the public/private split above — public copy says *what*, private copy says *how*. This is a security boundary, not a style preference: leaking the *how* onto the public card lets anyone re-implement the site without ever calling our API.
 
+Write all schema-facing text in English: top-level `description`, endpoint `purpose`, endpoint `description`, action copy, session descriptions, field labels, and examples.
+
 - **Top-level `description`** → public card. One or two sentences describing *what information a caller can get*, user-voice.
   - Good: *"Search public repositories, get repository details, and list of users' public repos, etc."* (github.com)
   - Good: *"Read public Threads profiles and posts. Pulls display name, bio, follower counts, plus every post in a thread with text, images, timestamps, and like counts."* (threads.com)
