@@ -64,6 +64,43 @@ hermai replay request.json --stealth                 # verify a captured XHR wor
 
 `hermai extract` recognizes: `ytInitialData`, `ytInitialPlayerResponse`, `__NEXT_DATA__`, `__UNIVERSAL_DATA_FOR_REHYDRATION__`, `SIGI_STATE`, `__APOLLO_STATE__`, `__PRELOADED_STATE__`, `__remixContext`, `__NUXT__`, `__NUXT_DATA__`, `__FRONTITY_CONNECT_STATE__`, `__MODERN_ROUTER_DATA__`, `__INITIAL_STATE__`.
 
+#### Dynamic apps: capture each route variant
+
+SPAs often call different backend endpoints for the same shell at different query/route state. Run `hermai intercept` against each variant the user can navigate to — root, search/list (`?q=`, `?domain=`), filter, detail (`/items/{id}`), nested detail (`/items/{id}/reviews`), and pagination — and record the triggering route for every promoted endpoint. When responses use numeric or protobuf-style keys, name fields conservatively and validate across multiple examples.
+
+#### Verify pagination, don't trust 200
+
+A captured next-page request can return HTTP 200 and silently return page 1 when the cursor is placed in the wrong proto field. Before claiming pagination support: pull page 1, replay with the response cursor, and assert `set(page1.ids) ∩ set(page2.ids)` is empty.
+
+#### Read the static bundle, not just the wire
+
+Intercept records what the UI fired this session. The complete RPC list usually lives in the site's static JS/Dart/wasm bundle as plain-text constants:
+
+- Flutter apps: grep `main.dart.js` for `A.x("ProtoName"` — the Dart proto registry exposes every field tag → field name (e.g. `p.O(1,"advertiserNamePrefix")`), no guessing.
+- Generic SPAs: grep the largest JS bundle for `/rpc/`, `Service/[A-Z]`, GraphQL `operationName:`, or proto file paths.
+- Probe each enumerated RPC with a minimal payload — the server's `BadRequestException` names the request proto class, itself a discovery signal.
+- Link the bundle path + recovery regex in each schema's source notes so it stays falsifiable when tags rotate.
+
+#### Negative-test filter fields
+
+For every numeric or opaque filter (region ID, category enum, sort key), send a deliberately invalid value and confirm the response changes. Identical real-vs-bogus responses mean the field is being ignored; different-but-still-results means a different field is doing the filtering and you've named the wrong one.
+
+#### Cover boot-time RPCs
+
+Some RPC classes only fire once during app init: geo target dictionaries, feature-flag bundles, enum-label lookups, ID → name mappings. Start capture *before* navigation and hold the window through at least one idle tick after `load`. Country dropdowns / category trees / language menus the schema can't reproduce are almost always loaded by one bootstrap RPC the intercept missed.
+
+#### When intercept returns a challenge page, read the script
+
+A 403 + tiny HTML body is often *not* a hard block. The page's inline `<script>` frequently documents the unblock as a `fetch(...)` to a per-page nonce. Reproduce the dance — cold GET → POST nonce → warm GET — and the server sets an anonymous clearance cookie a real browser would also receive.
+
+- Verify the resulting cookies are anonymous (set on any logged-out visit). If reproducing requires a value copied from a logged-in user's browser, document the technique in notes only.
+- List the bootstrap cookies in `required_cookies` (names only; values stay user-resolved per the existing rule).
+- If the site also offers an official token-gated API for the same data, ship that as the primary schema and treat the bootstrap path as a separate, non-overlapping schema for account-less callers.
+
+#### Extend the SSR-cache recognition list
+
+`hermai extract` recognizes `__NEXT_DATA__`, `__APOLLO_STATE__`, `ytInitialData`, and a dozen others. Modern Relay apps prefetch into a less-obvious cache: grep for `RelayPrefetchedStreamCache`, `collated_results`, or Next.js 14+ RSC streams (`self.__next_f.push([...])`). Treat embedded payloads as read endpoints that need no XHR.
+
 ### Phase 3 — Capture writes (the hard part)
 
 For authenticated write endpoints (post, save draft, add to cart, submit review), use headful intercept with cookie injection so you don't have to re-login:
