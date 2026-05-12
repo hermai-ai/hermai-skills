@@ -82,7 +82,14 @@ The default discovery pipeline (`detect → wellknown → probe --body | extract
 
 1. Pick the category that fits the site
 2. Work down the list — for each row, either discover the endpoint or confirm the site doesn't support it
-3. If you're stopping before reaching "Submit review / Post / Cart update", you're shipping an incomplete schema. Document what's missing with a top-level note so future contributors know to extend it.
+3. For dynamic apps, capture root, search/list, filter, detail, nested-detail, and pagination routes separately — same shell, different query state often calls different RPCs
+4. After intercept, grep the site's static JS/Dart/wasm bundle for every `Service/[A-Z]` RPC name and proto descriptor — capture missed everything the UI didn't trigger this session
+5. Verify pagination by diffing IDs across pages: `set(page1.ids) ∩ set(page2.ids)` must be empty (HTTP 200 with the token in the wrong field returns page 1 silently)
+6. Negative-test every numeric or opaque filter field — a bogus value must change the response, otherwise the field semantics are not actually understood
+7. Every endpoint needs a non-empty user-voice `purpose` string — the registry returns `PURPOSE_REQUIRED` for schemas without it
+8. Prefer official token-gated APIs over scrape paths; if both exist for the same data, ship them as separate, non-overlapping schemas
+9. When a route returns 403 + a JS challenge body, read the inline `<script>` before declaring the site unreachable — the unblock is usually documented as a `fetch(...)` to a per-page nonce
+10. If you're stopping before reaching "Submit review / Post / Cart update", you're shipping an incomplete schema. Document what's missing with a top-level note so future contributors know to extend it.
 
 ## When it's OK to ship partial coverage
 
