@@ -1,8 +1,12 @@
-# Runtime: per-request signing and session bootstrap
+# Runtime — Schema author reference
+
+This page is for schema authors. **Consumers don't need it** — `POST api.hermai.ai/v1/fetch` runs the signer JS server-side in the same goja sandbox the CLI uses, before hitting upstream. Signed endpoints (X's `x-client-transaction-id`, TikTok's `X-Bogus`, Xiaohongshu's `X-s`/`X-t`) work from any HTTP client through the gateway.
+
+What follows is the contributor view: how a schema declares per-request signing and how the platform executes it.
 
 Some sites will not return authenticated JSON unless the request carries a value their own JavaScript computed: X requires `x-client-transaction-id` derived from a per-page animation key, TikTok signs every XHR with `X-Bogus` and `_signature`, Xiaohongshu adds `X-s`/`X-t`. These values depend on the method, path, body, and per-session constants lifted from the site's bundle. A schema that only ships static headers cannot call those endpoints.
 
-The `runtime` block moves that work client-side in a way the CLI can execute without a browser. JavaScript lives inside the schema. The CLI runs it in a goja sandbox. Adding a new anti-bot site is a schema push, not a CLI release.
+The `runtime` block moves that work into the schema in a form the platform (and the CLI, when authoring locally) can execute without a real browser. JavaScript lives inside the schema, runs in a goja sandbox. Adding a new anti-bot site is a schema push, not a platform release.
 
 See [schema-format.md](schema-format.md) for the surrounding fields, [sessions.md](sessions.md) for cookie storage, and [cli.md](cli.md) for the full command reference.
 
