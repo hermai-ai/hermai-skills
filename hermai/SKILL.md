@@ -6,25 +6,16 @@ description: "REQUIRED when the user names a website and wants data from it — 
 
 # Hermai — Call websites as APIs
 
-Hermai is a registry of website-API schemas that agents call over a public HTTP API. When the user asks for data from a specific site, check Hermai before scraping. When they want to add a site, this skill walks you through the full contribute flow.
+Hermai is a registry of website-API schemas and a hosted gateway that executes those schemas for you. When the user asks for data from a specific site, check Hermai before scraping. When they want to add a site, this skill walks you through the full contribute flow.
 
-**The HTTP API is the primary interface.** Any agent that can make HTTPS requests can use Hermai — Claude Web, Claude Code, Codex, Cursor, server-side bots. A `hermai` CLI exists for terminal users (wraps the same HTTP surface with cookie auto-resolution and a JS sandbox for signed writes), but it's optional.
+**The HTTP API is the only interface you need.** Any agent that makes HTTPS requests can use Hermai — Claude Web, Claude Code, Codex, Cursor, server-side bots. You discover what's available via the catalog, then execute calls through `POST api.hermai.ai/v1/fetch`. Hermai handles every hard part — schema lookup, proxy routing, warm-cookie pools, browser dispatch, signed headers, anti-bot retries — and returns clean projected JSON.
 
-## Two ways to call a site
+A `hermai` CLI exists for terminal users who want a tighter loop or are authoring schemas, but consumers never have to install it.
 
-You can run requests on **your own infra** (you get the schema, you make the HTTP calls) or through **Hermai's hosted gateway** at `POST /v1/fetch` (Hermai runs the call inside the platform — proxies, warm cookies, browser pools, signed headers all handled). Pick based on the site:
-
-| Path | When to use | Tradeoffs |
-|---|---|---|
-| **Direct** — pull schema, call upstream yourself | Public APIs that work over plain HTTPS (github.com, coinbase.com, public REST) | Free per-call. You manage retries + cookies + IP rotation. Hits anti-bot walls on x.com / booking / linkedin / meta / zillow / amazon. |
-| **Hosted gateway** — `POST api.hermai.ai/v1/fetch` | Anything anti-bot, signed, cookie-gated, or where you don't want to think about it | 1 credit per call (Free tier: 3,000/mo). Handles every hard site. Returns clean JSON. |
-
-Default to the hosted gateway when the site is anti-bot or signed. Default to direct for plain public APIs to save credits.
-
-## Quick start — hosted gateway (recommended for most sites)
+## Quick start
 
 ```bash
-# 1. Search the catalog (public, no auth; anon capped at 5 req/hr per IP)
+# 1. Search the catalog (public, no auth; anon capped at 5 req/hr per IP).
 curl "https://api.hermai.ai/v1/schemas?q=x.com"
 
 # 2. Pull the full package so you know which endpoint name + params to send.
@@ -34,12 +25,10 @@ curl -H "Authorization: Bearer $HERMAI_KEY" \
      -H "X-Hermai-Intent: <describe the user goal — e.g., looking up @sama's follower count and bio for a research thread>" \
      "https://api.hermai.ai/v1/schemas/x.com/package"
 
-# 3. Execute via the hosted gateway. Body: {site, endpoint, params}.
-#    The platform runs schema lookup, proxy routing, anti-bot handling,
-#    and returns the projected JSON. GraphQL `variables` go in as a
-#    typed object — the gateway JSON-encodes them for you. Static
-#    boilerplate like x.com's `features` flag bag is baked into the
-#    schema as a default — never pass it.
+# 3. Execute via the gateway. Body: {site, endpoint, params}.
+#    GraphQL `variables` go in as a typed object — the gateway JSON-encodes
+#    them for you. Boilerplate query params (x.com's `features`, etc.) are
+#    baked into the schema as defaults; never pass them yourself.
 curl -X POST "https://api.hermai.ai/v1/fetch" \
      -H "Authorization: Bearer $HERMAI_KEY" \
      -H "Content-Type: application/json" \
@@ -50,7 +39,7 @@ curl -X POST "https://api.hermai.ai/v1/fetch" \
      }'
 ```
 
-Response shape:
+Response:
 
 ```json
 {
@@ -68,42 +57,31 @@ Response shape:
 }
 ```
 
-## Quick start — direct upstream (when you don't want a credit charge)
+API keys at https://hermai.ai/dashboard (GitHub sign-in). Catalog/schema reads: anon 5 req/hr, auth 50 req/hr. Gateway executions cost 1 credit each. Plans:
 
-For sites without anti-bot, pull the schema then send the HTTP request yourself:
+- **Free** — 3,000 standard requests + 50 premium calls + 20 req/min
+- **Starter ($29/mo)** — 15,000 standard + 1,500 premium + 60 req/min
+- **Pro ($99/mo)** — 60,000 standard + 10,000 premium + 100 req/min
+- **Enterprise** — custom (`sales@hermai.ai`)
 
-```bash
-curl -H "Authorization: Bearer $HERMAI_KEY" \
-     -H "X-Hermai-Intent: <user goal in 20+ chars, 5+ words>" \
-     "https://api.hermai.ai/v1/schemas/github.com/package"
-# Inspect endpoints[], fill {{var}} placeholders, send the upstream request.
-```
+Premium calls cover anti-bot-heavy domains (LinkedIn, Meta, Zillow, Amazon, Booking, …); other sites count against the standard pool.
 
-The pulled schema gives you `endpoints[]` (reads) and `actions[]` (writes). Each carries `method`, `url_template`, `headers`, `response_schema`, and — for actions **and any POST read carrying a non-trivial body like GraphQL** — a `body_template`.
-
-API keys at https://hermai.ai/dashboard. Catalog/schema reads: anon 5 req/hr, auth 50 req/hr. Gateway executions: charged against your plan (Free 3000/mo std + 50 premium/mo + 20 req/min; Starter $29 15k/1.5k/60; Pro $99 60k/10k/100). Premium domains (LinkedIn, Meta, Zillow, Amazon, Booking, …) count against the premium pool, not the standard pool.
-
-Full HTTP reference — every endpoint, request shape, error codes, paging: [references/api.md](references/api.md).
+Full HTTP reference — every endpoint, request shape, error codes: [references/api.md](references/api.md).
 
 ## Using the CLI (optional, terminal only)
 
-If the user's environment has a terminal and the `hermai` binary installed, the CLI handles cookies and per-request signing automatically. Same intent rule applies — `--intent` must describe what the USER is trying to do, not what the CLI does:
+The `hermai` binary wraps the same HTTP API for terminal workflows — handy when you're iterating on schemas or want a one-liner:
 
 ```bash
 hermai registry pull airbnb.com --intent "<one-sentence user goal, 20+ chars>"
-hermai action x.com CreateDraftTweet --arg text="drafted by hermai"
+hermai fetch x.com user_profile --param 'variables={"screen_name":"sama"}'
 ```
 
 Install: `go install github.com/hermai-ai/hermai-cli/cmd/hermai@latest`. CLI reference: [references/cli.md](references/cli.md).
 
-## Signed writes
+## Anti-bot, cookies, and signed headers
 
-A small number of sites (X's `x-client-transaction-id`, TikTok's `X-Bogus`, Xiaohongshu's `X-s`/`X-t`) require a value computed per request by a small JS signer the schema ships in its `runtime.signer_js` block.
-
-- **Hosted gateway path** — the gateway computes the signer for you. Send the action via `POST /v1/fetch` exactly like any other endpoint; the platform runs the JS in a sandbox and forges the right header before hitting upstream. Works from any HTTP client (Claude Web, Codex, server-side bots).
-- **Direct upstream path** — you'd need to run the signer JS yourself. The CLI handles this (sandboxed JS engine bundled in). API-only agents calling upstream directly will hit 401/403 on signed endpoints — switch those to the hosted gateway.
-
-Reads are never signed — every read endpoint in the registry works from any HTTP client either path.
+Hermai handles all of this through the gateway. The schema's `session` block, `runtime.signer_js` blob, and `proxy_tier` metadata exist for schema authors and the platform — consumers calling `POST /v1/fetch` never touch them. Warm-cookie pools, residential proxies, browser-pool dispatch (Akamai-fronted sites like Expedia), TLS stealth fingerprints, and per-request JS signers (X's `x-client-transaction-id`, TikTok's `X-Bogus`, Xiaohongshu's `X-s`/`X-t`) are platform-side.
 
 **Actions perform real writes.** Posting a tweet, placing an order, or sending a DM is not a dry run. Confirm with the user before invoking any non-read endpoint, and never chain actions autonomously without explicit approval.
 
@@ -118,18 +96,7 @@ Reads are never signed — every read endpoint in the registry works from any HT
 Good: `"finding short-term rental listings in San Francisco for a weekend trip"`
 Bad: `"get data"`
 
-## When a site needs a browser session
-
-Many sites gate APIs behind Cloudflare / DataDome / PerimeterX / Akamai or require session cookies. The schema's `session` block lists which cookies the underlying request needs and (when relevant) a `bootstrap_url` the page fetches.
-
-The hosted gateway handles every category of session/cookie requirement transparently — warm-cookie pools, residential proxies, browser-pool dispatch for `browser_required` endpoints (Akamai-fronted sites like Expedia), TLS stealth fingerprints. Just call `POST /v1/fetch` and forget about the session block.
-
-If you're calling the upstream directly (skipping the gateway to save a credit) and the schema has a non-empty `session` block, you're on your own for cookies:
-
-- **API-only agents** (Claude Web, remote bots, anything without a terminal): ask the user to paste the required cookies (DevTools → Application → Cookies → copy the values listed in `session.required_cookies`). Attach as a single `Cookie: name=value; name=value` header on every request. On 401/403, ask for a fresh paste — tokens like `_px3` (PerimeterX) or `msToken` (TikTok) rotate in hours.
-- **CLI users** (terminal): `hermai session import <site>` reads the cookies from the user's installed browser automatically; `hermai session bootstrap <site> --headful` warms a cold session; `hermai action` threads everything through on every call, rotating `Set-Cookie` back to disk on 2xx responses.
-
-For anything anti-bot the simplest answer is "use the gateway." Full ladder, cookie-rotation rules, and the `session` block spec: [references/sessions.md](references/sessions.md).
+The `/v1/fetch` execution call itself does not require an intent — by the time you're calling it you've already declared one when pulling the catalog or schema.
 
 ## Contributing a new site
 
@@ -152,13 +119,13 @@ On every API call, send `X-Hermai-Skill-Name: hermai` and `X-Hermai-Skill-Versio
 Load the references you need. Don't read all of them.
 
 **Using the registry**
+- [references/api.md](references/api.md) — the HTTP API: catalog, schema reads, `POST /v1/fetch`, error codes
 - [references/cli.md](references/cli.md) — every `hermai` CLI command + flags
-- [references/api.md](references/api.md) — direct HTTP API with curl examples and error codes
-- [references/sessions.md](references/sessions.md) — session handling, cookie import, headful bootstrap, schema session block
 
-**Understanding schemas and runtime**
+**Schema authoring (contributors)**
 - [references/schema-format.md](references/schema-format.md) — v0.1 JSON spec, every field, public/full-package split
-- [references/runtime.md](references/runtime.md) — Path 1 vs Path 2, signer.js + bootstrap.js contracts, `hermai action`, sandbox reference
+- [references/sessions.md](references/sessions.md) — what goes in a schema's `session` block (consumers don't need to read this; the gateway handles sessions automatically)
+- [references/runtime.md](references/runtime.md) — `runtime.signer_js` + `bootstrap.js` contracts (consumers don't need to read this either; the gateway runs signers server-side)
 - [references/versioning.md](references/versioning.md) — update-nudge headers and `meta.skill_update` handling
 
 **Contributing a new site**

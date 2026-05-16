@@ -1,6 +1,6 @@
-# Hermai API — Direct HTTP Usage
+# Hermai API — HTTP Reference
 
-Use this when the CLI isn't available or when you need more control.
+The complete HTTP surface. Every consumer flow lives here — catalog discovery, schema reads, and hosted execution via `POST /v1/fetch`. The CLI in [cli.md](cli.md) wraps this same API for terminal users.
 
 Base URL: `https://api.hermai.ai`
 
@@ -39,21 +39,21 @@ Keys come from https://hermai.ai/dashboard.
 |--------|------|---------|
 | POST | `/v1/fetch` | Execute a schema endpoint via the Hermai gateway. Body: `{site, endpoint, params}`. 1 credit per call. Handles proxies, warm cookies, anti-bot retries, signed headers, and response projection. |
 
-## Example: look up a site (read-only)
+## Example: discover endpoints for a site
 
 ```bash
-# Search
+# Search the catalog
 curl -s "https://api.hermai.ai/v1/schemas?q=airbnb"
 
-# Get full endpoints
+# Pull a site's endpoints (requires intent)
 curl -H "Authorization: Bearer $KEY" \
      -H "X-Hermai-Intent: finding SF rentals for a weekend trip, 2 adults" \
      "https://api.hermai.ai/v1/catalog/airbnb.com"
 ```
 
-Then either call the upstream URLs from the response directly (no credit charge, but you handle cookies + retries + anti-bot) or proxy through `POST /v1/fetch` (1 credit, Hermai handles everything).
+The response gives you each endpoint's `name`, declared `params`, and `response_schema`. Use the `name` in the next call.
 
-## Example: execute via the hosted gateway
+## Example: execute a call
 
 ```bash
 curl -X POST "https://api.hermai.ai/v1/fetch" \
@@ -94,7 +94,7 @@ Response shape:
 | `endpoint` | yes | Endpoint name from the catalog (`GET /v1/catalog/{domain}`) |
 | `params` | depends | The endpoint's declared params. Object/array values get JSON-encoded automatically — pass GraphQL `variables` as a typed object: `{"variables": {"screen_name": "sama"}}`, not a pre-stringified JSON blob. Static boilerplate (x.com's `features`, etc.) lives in the schema as defaults — don't supply it. |
 
-The gateway picks the right execution path per endpoint — direct HTTPS, warm-cookie replay, residential proxy, warm-Chrome pool, BrightData Web Unlocker. You don't choose; the schema's runtime metadata does.
+The gateway picks the execution path per endpoint — direct HTTPS, warm-cookie replay, residential proxy, warm-Chrome pool, Web Unlocker. You don't choose; the schema's runtime metadata does.
 
 ### Pricing
 
@@ -132,7 +132,7 @@ Requirements: 20+ characters, 5+ distinct words. See SKILL.md for examples.
 | `INTENT_REQUIRED` | Intent missing on a catalog/schema read |
 | `INTENT_TOO_SHORT` | Under 20 chars |
 | `INTENT_TOO_FEW_WORDS` | Under 5 distinct words |
-| `SESSION_REQUIRED` | Direct upstream call needs warm browser session — switch to `/v1/fetch` or follow [sessions.md](sessions.md) |
+| `SESSION_REQUIRED` | Returned only on the older direct-upstream path; the gateway handles sessions for you, so this should not appear on `/v1/fetch` responses |
 
 Response envelope for all endpoints:
 
