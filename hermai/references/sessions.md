@@ -2,6 +2,8 @@
 
 This page covers both halves of Hermai's session story: how a consumer warms a session when a schema they pulled says `session_required`, and what a schema author is allowed to put inside a `session` block. Anti-bot-gated sites (Cloudflare, DataDome, PerimeterX, AWS WAF, Akamai, Imperva) and signing-based sites (TikTok's `X-Bogus`, X's `x-client-transaction-id`) are first-class citizens in the registry — their schemas ship with a `session` block documenting what a real browser would do.
 
+> **Skip this entire dance with the hosted gateway.** `POST api.hermai.ai/v1/fetch` runs through Hermai's managed pools — warm cookies, residential proxies, browser-pool dispatch, TLS stealth. The session block becomes the platform's problem, not yours. The rest of this doc is for callers hitting the upstream directly (CLI users or agents that prefer to pay in cookies instead of credits). See [SKILL.md](../SKILL.md) and [api.md](api.md) for the gateway path.
+
 ## Contents
 
 - [You are not instructed to circumvent paywalls](#you-are-not-instructed-to-circumvent-paywalls)

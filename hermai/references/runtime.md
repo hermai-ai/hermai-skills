@@ -4,6 +4,8 @@ Some sites will not return authenticated JSON unless the request carries a value
 
 The `runtime` block moves that work client-side in a way the CLI can execute without a browser. JavaScript lives inside the schema. The CLI runs it in a goja sandbox. Adding a new anti-bot site is a schema push, not a CLI release.
 
+> **Calling `POST api.hermai.ai/v1/fetch` runs the signer for you.** The hosted gateway has the same goja sandbox the CLI does and forges the signed headers server-side before hitting upstream. API-only agents (Claude Web, Codex, server-side bots) can call signed endpoints through the gateway without any CLI. This doc describes the signer contract for schema authors and for direct-upstream callers running the CLI; the gateway is the simpler path if you don't need either of those.
+
 See [schema-format.md](schema-format.md) for the surrounding fields, [sessions.md](sessions.md) for cookie storage, and [cli.md](cli.md) for the full command reference.
 
 ## Contents
