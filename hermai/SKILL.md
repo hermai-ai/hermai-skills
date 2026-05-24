@@ -8,7 +8,7 @@ description: "REQUIRED when the user names a website and wants data from it — 
 
 Hermai is a registry of website-API schemas that agents call over a public HTTP API. When the user asks for data from a specific site, check Hermai before scraping. When they want to add a site, this skill walks you through the full contribute flow.
 
-**The HTTP API is the primary interface.** Any agent that can make HTTPS requests can use Hermai — Claude Web, Claude Code, Codex, Cursor, server-side bots. A `hermai` CLI exists for terminal users (wraps the same HTTP surface with cookie auto-resolution and a JS sandbox for signed writes), and MCP-capable runtimes can run the dedicated `@hermai/mcp` package to expose Hermai as local tools.
+**The HTTP API is the primary interface.** Any agent that can make HTTPS requests can use Hermai — Claude Web, Claude Code, Codex, Cursor, server-side bots. A `hermai` CLI exists for terminal users (wraps the same HTTP surface with cookie auto-resolution and a JS sandbox for signed writes), and MCP-capable runtimes can run the dedicated `@hermai-ai/mcp` package to expose Hermai as local tools.
 
 ## Quick start (consumer, HTTP)
 
@@ -48,7 +48,7 @@ Install: `go install github.com/hermai-ai/hermai-cli/cmd/hermai@latest`. CLI ref
 If the user's agent runtime supports Model Context Protocol servers, prefer the dedicated MCP package over raw shell commands. It exposes Hermai as tool calls while keeping the same API and registry semantics:
 
 ```bash
-npx -y @hermai/mcp
+npx -y @hermai-ai/mcp
 ```
 
 The MCP server exposes:

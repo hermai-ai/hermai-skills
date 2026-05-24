@@ -5,7 +5,7 @@ Use MCP when the agent runtime supports local tool servers and the user wants He
 The MCP server ships as a dedicated npm package:
 
 ```bash
-npx -y @hermai/mcp
+npx -y @hermai-ai/mcp
 ```
 
 Anonymous read-only lookup and public schema request intake work without a key. Set `HERMAI_API_KEY` or `HERMAI_PLATFORM_KEY` in the MCP client environment when the runtime needs authenticated Hermai APIs.
@@ -19,7 +19,7 @@ Use this shape in any MCP-capable client. Exact config file paths vary by runtim
   "mcpServers": {
     "hermai": {
       "command": "npx",
-      "args": ["-y", "@hermai/mcp"],
+      "args": ["-y", "@hermai-ai/mcp"],
       "env": {
         "HERMAI_API_KEY": "hm_sk_..."
       }
