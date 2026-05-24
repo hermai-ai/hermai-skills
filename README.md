@@ -19,7 +19,7 @@ Both audiences (callers and contributors) are served by the single `hermai` skil
 
 ## What the skill does
 
-- **For calling**: fires when a user wants data from a website — "check prices on allbirds.com", "find flights on kayak", "get listings from zillow". Teaches the agent to look up the site in the registry, pull the schema, fill endpoint templates, and handle authenticated actions (cookies, signers, bootstrap state). CLI (`hermai action`, `hermai registry pull`), MCP (`hermai mcp serve`), and direct HTTP API paths are covered.
+- **For calling**: fires when a user wants data from a website — "check prices on allbirds.com", "find flights on kayak", "get listings from zillow". Teaches the agent to look up the site in the registry, pull the schema, fill endpoint templates, and handle authenticated actions (cookies, signers, bootstrap state). CLI (`hermai action`, `hermai registry pull`), MCP (`npx -y hermai-mcp`), and direct HTTP API paths are covered.
 - **For contributing**: fires when a user wants to add a site to the registry. Teaches the agent to use the [hermai-cli](https://github.com/hermai-ai/hermai-cli) discovery toolkit (`hermai detect`, `wellknown`, `probe`, `extract`, `intercept`, `introspect`, `session`) to document endpoints, capture real browser traffic for writes, compose a schema against format v0.1, and push it. Covers the intent category taxonomy, session-block rules for anti-bot sites, the runtime block (signer JS / bootstrap JS) for per-request-signed sites, and how validation errors map back to the spec.
 
 Contributing requires `hermai-cli` installed locally:
@@ -32,7 +32,7 @@ hermai registry login
 MCP-capable runtimes can expose Hermai as tools with:
 
 ```bash
-hermai mcp serve
+npx -y hermai-mcp
 ```
 
 See [`hermai/references/mcp.md`](./hermai/references/mcp.md) for the tool list and client config.
