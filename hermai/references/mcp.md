@@ -2,15 +2,13 @@
 
 Use MCP when the agent runtime supports local tool servers and the user wants Hermai available as callable tools rather than shell commands.
 
-The MCP server ships with `hermai-cli`:
+The MCP server ships as a dedicated npm package:
 
 ```bash
-go install github.com/hermai-ai/hermai-cli/cmd/hermai@latest
-hermai registry login
-hermai mcp serve
+npx -y @hermai/mcp
 ```
 
-`hermai registry login` stores the Hermai API key locally. Anonymous read-only lookup still works without a key, but authenticated usage gets higher limits and is required for private or owner-scoped operations.
+Anonymous read-only lookup and public schema request intake work without a key. Set `HERMAI_API_KEY` or `HERMAI_PLATFORM_KEY` in the MCP client environment when the runtime needs authenticated Hermai APIs.
 
 ## Generic MCP client config
 
@@ -20,17 +18,17 @@ Use this shape in any MCP-capable client. Exact config file paths vary by runtim
 {
   "mcpServers": {
     "hermai": {
-      "command": "hermai",
-      "args": ["mcp", "serve"],
+      "command": "npx",
+      "args": ["-y", "@hermai/mcp"],
       "env": {
-        "HERMAI_PLATFORM_KEY": "hm_sk_..."
+        "HERMAI_API_KEY": "hm_sk_..."
       }
     }
   }
 }
 ```
 
-If `hermai registry login` already wrote local config, the `HERMAI_PLATFORM_KEY` env entry is optional.
+The environment variable is optional for public lookup and schema request intake.
 
 ## Tools
 
@@ -68,7 +66,7 @@ Required six-field intake:
 - `domain`
 - `task`
 - `read_or_write` — `read` or `write`
-- `auth` — `public` or `authenticated`
+- `auth_shape` — for example `public`, `anonymous`, `login required`, `OAuth`, or `owner-approved`
 - `output_shape`
 - `failure_mode`
 
@@ -76,7 +74,7 @@ Optional fields:
 
 - `source_url`
 - `requester_agent`
-- `contact`
+- `requester_contact`
 - `idempotency_key`
 
 Never include cookies, API keys, bearer tokens, private session data, or personal credentials in a schema request.
