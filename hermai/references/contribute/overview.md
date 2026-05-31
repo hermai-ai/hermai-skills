@@ -169,6 +169,7 @@ The production smoke request shape is:
 
 ```bash
 curl -sS -X POST https://api.hermai.ai/v1/fetch \
+  -H "Authorization: Bearer $HERMAI_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"site":"example.com","endpoint":"product_detail","params":{"slug":"stable-sample"}}' \
   | jq
