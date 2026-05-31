@@ -310,7 +310,7 @@ For example, product detail copy should focus on the returned data:
 Fetch a product detail page and return title, price, availability, images, and canonical URL when present.
 ```
 
-Use Hermai owned internal credentials for readiness tests. Do not mark an endpoint cloud ready until hosted `/v1/fetch` returns useful projected data with stable fixture params.
+Run readiness checks with credentials explicitly approved for validation. Do not mark an endpoint cloud ready until hosted `/v1/fetch` returns useful projected data with stable fixture params.
 
 ## Verified, not wishful
 

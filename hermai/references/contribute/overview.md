@@ -123,7 +123,7 @@ Describe the data or action an endpoint provides, the inputs it needs, the outpu
 
 Keep internal business context, credentials, and operational details out of schema artifacts. This applies to top level descriptions, endpoint purposes, endpoint descriptions, `cloud_ready_reason`, resource policy notes, generated docs, schema cards, examples, tests, and workflow names.
 
-Use Hermai owned internal credentials for readiness tests.
+Run readiness checks with credentials explicitly approved for validation.
 
 `cloud_ready=true` requires useful data through hosted `/v1/fetch`. Registry acceptance, self execution, raw HTML, or a direct website HTTP 200 is not enough.
 
