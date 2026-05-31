@@ -2,7 +2,9 @@
 
 [English](./README.md) · [繁體中文](./README.zh-Hant.md) · **简体中文** · [日本語](./README.ja-JP.md)
 
-[Hermai](https://hermai.ai) registry 的 `hermai` agent skill — "AI Agent 的 Google"。在你的 agent 中安装后,它就能发现、调用并贡献结构化的网站 API,而不再需要解析 HTML。
+`hermai` agent skill 用来教 agent 使用 [Hermai](https://hermai.ai)。Hermai 提供开源的网站 schema registry,也通过 Hermai Cloud 提供托管执行。
+
+当 agent 需要从网站获取数据、自行执行公开 schema、调用托管的 `/v1/fetch`,或贡献新的 schema 覆盖时,使用这个 skill。
 
 ## 安装
 
@@ -19,8 +21,10 @@ npx skills add hermai-ai/hermai-skills --skill hermai -a claude-code
 
 ## Skill 做什么
 
-- **调用网站**:当用户想从网站获取数据时触发 — 像"查询 allbirds.com 的价格"、"在 kayak 找航班"、"抓取 zillow 的房源清单"。教 agent 在 registry 中查询网站、拉取 schema、填入端点参数模板,并处理需鉴权的 actions(cookies、signer、bootstrap state)。同时覆盖 CLI(`hermai action`、`hermai registry pull`)与直接 HTTP API 两条路径。
+- **调用网站**:当用户想从网站获取数据时触发,例如"查询 allbirds.com 的价格"、"在 kayak 找航班"、"抓取 zillow 的房源清单"。教 agent 在 registry 中查询网站、拉取 schema、在适合时自行执行,或在需要生产执行时调用托管的 `/v1/fetch`。同时覆盖 CLI(`hermai action`、`hermai registry pull`)、MCP(`npx -y hermai-mcp`)与直接 HTTP API 路径。
 - **贡献网站**:当用户想把网站加入 registry 时触发。教 agent 使用 [hermai-cli](https://github.com/hermai-ai/hermai-cli) 的发现工具组(`hermai detect`、`wellknown`、`probe`、`extract`、`intercept`、`introspect`、`session`)记录端点、通过 headful 捕获真实浏览器流量用于写入操作、按 format v0.1 编写 schema 并推送。覆盖 intent 分类、anti-bot 网站的 session block 规则、每次请求需签名网站所需的 runtime block(signer JS / bootstrap JS),以及校验错误如何映射到规范。
+- **Cloud ready**:教 agent 只有在托管 `/v1/fetch` 返回有用数据时才把 `cloud_ready=true` 当作成立,而不是只看 registry 接受、直接网站 HTTP 200 或原始 HTML。
+- **公开 schema 文案**:教 agent 为 schema 用户编写中立的产品文档,并把内部业务背景、凭据和运维细节留在公开 schema 表面之外。
 
 贡献 schema 需要先在本地安装 `hermai-cli`:
 

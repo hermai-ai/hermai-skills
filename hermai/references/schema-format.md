@@ -15,6 +15,7 @@ The registry stores a schema as a single JSON document. Every field in this refe
 - [Probe fixtures](#probe-fixtures)
 - [Public card vs. full package](#public-card-vs-full-package)
 - [Description rules](#description-rules)
+- [Public content standards](#public-content-standards)
 - [Verified, not wishful](#verified-not-wishful)
 
 ## Example
@@ -175,7 +176,9 @@ Rule of thumb: if the method is POST and you captured a body, paste the body int
 
 ## Response schema and cloud readiness
 
-The registry can accept a schema before it is verified, but production fetch is only cloud-ready when every probe-eligible endpoint can be called and projected into structured JSON.
+The registry can accept a schema before it is verified, but production fetch is only cloud ready when every probe eligible endpoint can be called through hosted `/v1/fetch` and projected into structured JSON.
+
+Self execution can still be useful before cloud readiness. A schema may be valid for open source agents that call target websites directly, while `cloud_ready=false` tells Hermai Cloud users not to rely on hosted execution yet.
 
 For each production endpoint, write all of these:
 
@@ -186,7 +189,7 @@ For each production endpoint, write all of these:
 - Endpoint `body_template`: required for non-trivial POST/GraphQL/RPC read endpoints. Use the captured browser body and replace caller-controlled values with `{{var}}` placeholders; do not invent a plausible body shape. For write `actions`, use `body_template` as documented above.
 - `response_schema`: the fields the caller receives after projection. This must describe output data, not parser advice.
 
-Request-side correctness is strict. The production fetch service binds only declared caller params plus tokens supplied by the resource layer. If a URL/body/header still contains `{placeholder}` after binding, the request fails before upstream fetch. If an endpoint needs cookies, CSRF tokens, account IDs, pageview IDs, persisted-query hashes, or IP-bound browser state, declare that requirement through `session`, `runtime`, endpoint metadata, and the resource policy; do not hide it in prose or assume the caller will provide it manually.
+Request side correctness is strict. The production fetch service binds only declared caller params plus tokens supplied by the resource layer. If a URL/body/header still contains `{placeholder}` after binding, the request fails before upstream fetch. If an endpoint needs cookies, CSRF tokens, account IDs, pageview IDs, persisted query hashes, or IP bound browser state, declare that requirement through `session`, `runtime`, endpoint metadata, and the resource policy. Do not hide it in prose or assume the caller will provide it manually.
 
 A valid `response_schema` for JSON responses uses `type`, `fields`, and nested `items`:
 
@@ -292,6 +295,22 @@ Write all schema-facing text in English: top-level `description`, endpoint `purp
 - **`runtime.*_js`** → full package only. Sandboxed source, reviewable by anyone who pulls the package, invisible to anonymous browsers. Comment the JS like you would a normal source file; the comments ship with the source.
 
 Quick test: would a competitor gain a meaningful shortcut to re-implement the site by reading this field without an API key? If yes, the content belongs under `description` (per-endpoint), inside the session block, or inside the runtime JS sources — not on the public card.
+
+## Public content standards
+
+Public schema content should read like product documentation for the schema user.
+
+Describe the data or action an endpoint provides, the inputs it needs, the output shape callers can expect, readiness state, and meaningful limits.
+
+Keep internal business context, credentials, and operational details out of schema artifacts. This applies to top level descriptions, endpoint purposes, endpoint descriptions, `cloud_ready_reason`, resource policy notes, generated docs, schema cards, examples, tests, and workflow names.
+
+For example, product detail copy should focus on the returned data:
+
+```text
+Fetch a product detail page and return title, price, availability, images, and canonical URL when present.
+```
+
+Run readiness checks with credentials explicitly approved for validation. Do not mark an endpoint cloud ready until hosted `/v1/fetch` returns useful projected data with stable fixture params.
 
 ## Verified, not wishful
 
