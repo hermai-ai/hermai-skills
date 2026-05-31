@@ -18,6 +18,7 @@ Read this file when the user is adding a new site to the Hermai registry (not ca
 - [Reference map — load what you need, in this order](#reference-map--load-what-you-need-in-this-order)
 - [Before you run any command](#before-you-run-any-command)
 - [The discovery pipeline](#the-discovery-pipeline)
+- [Schema publishing standards](#schema-publishing-standards)
 - [Writing the schema](#writing-the-schema)
 - [Cloud-ready checklist](#cloud-ready-checklist)
 - [Push](#push)
@@ -114,6 +115,18 @@ for m in re.finditer(r'.{200}Bahrain.{500}', html):
 
 If the data you want isn't reachable with any selector you can find — that's an answer too. Either the data is loaded dynamically (use `hermai intercept` to find the real XHR) or it's not actually exposed on that page.
 
+## Schema publishing standards
+
+Public schema copy must be generic product copy.
+
+Never include customer names, prospect names, pilot notes, API key ownership, sales context, competitor replacement language, or private relationship context. This applies to top level descriptions, endpoint purposes, endpoint descriptions, `cloud_ready_reason`, resource policy notes, generated docs, schema cards, examples, tests, and workflow names.
+
+Write for the user of the schema. Describe what data or action the endpoint provides. Do not explain who requested it, why a sales opportunity needs it, or which customer will test it.
+
+Use Hermai owned internal smoke keys for readiness tests. Never use customer API keys, even when the customer supplied the key or asked us to test their account.
+
+`cloud_ready=true` requires useful data through hosted `/v1/fetch`. Registry acceptance, self execution, raw HTML, or a direct website HTTP 200 is not enough.
+
 ## Writing the schema
 
 Fields and shape: [schema-format.md](../schema-format.md). Public-card vs full-package split is a security boundary — keep extraction detail (parse paths, selectors, CSS) in private `description`, never in public `purpose` or top-level `description`. Agents reading the public card should learn *what* data is available, not *how* to grab it.
@@ -155,7 +168,7 @@ Before calling a schema production-ready:
 The production smoke request shape is:
 
 ```bash
-curl -sS -X POST https://fetch.hermai.ai/v1/fetch \
+curl -sS -X POST https://api.hermai.ai/v1/fetch \
   -H 'Content-Type: application/json' \
   -d '{"site":"example.com","endpoint":"product_detail","params":{"slug":"stable-sample"}}' \
   | jq

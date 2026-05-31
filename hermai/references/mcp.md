@@ -2,6 +2,8 @@
 
 Use MCP when the agent runtime supports local tool servers and the user wants Hermai available as callable tools rather than shell commands.
 
+The MCP server is a local interface over Hermai registry and request intake workflows. Use it to discover schemas, inspect coverage, and submit missing workflow requests. For production hosted execution, call the HTTP `/v1/fetch` endpoint unless your installed MCP package exposes an explicit hosted fetch tool.
+
 The MCP server ships as a dedicated npm package:
 
 ```bash
@@ -101,4 +103,4 @@ Inputs:
 
 ## Decision rule
 
-Use MCP when available. Fall back to direct HTTP API if the runtime cannot run local MCP servers. Fall back to the CLI when the user has a terminal workflow or needs cookie/session/signed-write handling.
+Use MCP when available for schema lookup and request intake. Use the registry package for self execution when the user wants open source schema execution on their own infrastructure. Use hosted `/v1/fetch` when the user wants production execution through Hermai Cloud. Fall back to the CLI when the user has a terminal workflow or needs local cookie, session, or signed write handling.

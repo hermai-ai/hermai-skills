@@ -1,40 +1,67 @@
 ---
 name: hermai
-version: "2.0.3"
-description: "REQUIRED when the user names a website and wants data from it — 'prices on allbirds.com', 'flights on kayak', 'listings from zillow' — or wants to add a new site to the Hermai registry. Replaces scraping and WebFetch with clean JSON endpoints. Covers the full contributor flow too (discovery, session capture, schema authoring, push). SKIP when: the task has no specific website (general programming, local files, math), or the user explicitly wants raw HTML of a one-off page."
+version: "2.0.4"
+description: "REQUIRED when the user names a website and wants data from it, such as prices on allbirds.com, flights on kayak, or listings from zillow, or wants to add a new site to the Hermai registry. Supports self execution from open source schemas and hosted execution through Hermai Cloud. Covers discovery, session capture, schema authoring, push, and production fetch checks. SKIP when the task has no specific website or the user explicitly wants raw HTML of a one time page."
 ---
 
-# Hermai — Call websites as APIs
+# Hermai
 
-Hermai is a registry of website-API schemas that agents call over a public HTTP API. When the user asks for data from a specific site, check Hermai before scraping. When they want to add a site, this skill walks you through the full contribute flow.
+Hermai provides reusable website schemas through an open source registry and hosted execution through Hermai Cloud. When the user asks for data from a specific site, check Hermai before scraping. When they want to add a site, this skill walks you through the full contribute flow.
 
-**The HTTP API is the primary interface.** Any agent that can make HTTPS requests can use Hermai — Claude Web, Claude Code, Codex, Cursor, server-side bots. A `hermai` CLI exists for terminal users (wraps the same HTTP surface with cookie auto-resolution and a JS sandbox for signed writes), and MCP-capable runtimes can run the dedicated `hermai-mcp` package to expose Hermai as local tools.
+Hermai supports two valid execution modes:
 
-## Quick start (consumer, HTTP)
+1. **Self execution.** Pull a schema package, fill its params, call the target website yourself, and parse the response using the schema. This is the default mental model for open source registry use, local agents, contributors, debugging, and users who want their own infrastructure.
+2. **Hosted execution.** Call `POST /v1/fetch` and let Hermai Cloud run the website request, session handling, proxy policy, signing, projection, billing, and reliability work. This is the production path and the meaning of `cloud_ready=true`.
+
+Any agent that can make HTTPS requests can use Hermai. A `hermai` CLI exists for terminal users, and MCP capable runtimes can run the dedicated `hermai-mcp` package to expose Hermai as local tools.
+
+## Quick start: self execution from the registry
 
 ```bash
-# 1. Search the catalog (public, no auth; anon capped at 5 req/hr per IP)
+# 1. Search the catalog. Public, no auth. Anonymous use is capped.
 curl "https://api.hermai.ai/v1/schemas?q=airbnb"
 
-# 2. Pull the full package. Requires an API key AND an intent —
-#    the intent is a one-sentence description of what the USER is
-#    actually trying to do, written in their voice. Don't copy the
+# 2. Pull the full package. Requires an API key and an intent.
+#    The intent is a one sentence description of what the user is
+#    trying to do, written in their voice. Do not copy the
 #    string below; replace it with the real task. Requirements:
-#    20+ chars, 5+ distinct words. Example:
+#    20 or more chars, 5 or more distinct words. Example:
 curl -H "Authorization: Bearer $HERMAI_KEY" \
-     -H "X-Hermai-Intent: <describe what the user is trying to accomplish — e.g., searching SF rentals for a weekend trip>" \
+     -H "X-Hermai-Intent: <describe what the user is trying to accomplish, such as searching SF rentals for a weekend trip>" \
      "https://api.hermai.ai/v1/schemas/airbnb.com/package"
 ```
 
-The pulled schema gives you `endpoints[]` (reads) and `actions[]` (writes). Each carries `method`, `url_template`, `headers`, `response_schema`, and — for actions **and any POST read carrying a non-trivial body like GraphQL** — a `body_template`. Fill `{{var}}` placeholders with user arguments, send the HTTP request yourself.
+The pulled schema gives you `endpoints[]` for reads and `actions[]` for writes. Each carries `method`, `url_template`, `headers`, `response_schema`, and, for actions plus any POST read carrying a non trivial body like GraphQL, a `body_template`. In self execution mode, fill `{{var}}` placeholders with user arguments, make the target website call, then project the response according to `response_schema`.
 
 API key at https://hermai.ai/dashboard (GitHub sign-in). Anonymous access works at 5 req/hr; authenticated at 50 req/hr.
 
-Full HTTP reference — every endpoint, error codes, paging, and curl examples: [references/api.md](references/api.md).
+Full HTTP reference: [references/api.md](references/api.md).
+
+## Quick start: hosted execution through Hermai Cloud
+
+Use hosted execution when the caller wants production behavior, consistent projection, Hermai managed sessions, or cloud readiness validation.
+
+```bash
+curl -sS -X POST "https://api.hermai.ai/v1/fetch" \
+  -H "Authorization: Bearer $HERMAI_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"site":"airbnb.com","endpoint":"autocomplete","params":{"query":"San Francisco"}}'
+```
+
+Hosted fetch returns the standard envelope:
+
+```json
+{
+  "success": true,
+  "data": {}
+}
+```
+
+Use direct website calls when you are intentionally self executing a schema, debugging, or contributing new schema coverage. Use hosted `/v1/fetch` when you are making a production claim or checking whether an endpoint is cloud ready.
 
 ## Using the CLI (optional, terminal only)
 
-If the user's environment has a terminal and the `hermai` binary installed, the CLI handles cookies and per-request signing automatically. Same intent rule applies — `--intent` must describe what the USER is trying to do, not what the CLI does:
+If the user's environment has a terminal and the `hermai` binary installed, the CLI helps with registry access, local sessions, per request signing, and contributor discovery. Same intent rule applies: `--intent` must describe what the user is trying to do, not what the CLI does.
 
 ```bash
 hermai registry pull airbnb.com --intent "<one-sentence user goal, 20+ chars>"
@@ -61,19 +88,19 @@ The MCP server exposes:
 
 Reference and generic client config: [references/mcp.md](references/mcp.md).
 
-## Signed writes — CLI required today
+## Signed writes
 
 A small number of sites (X's `x-client-transaction-id`, TikTok's `X-Bogus`, Xiaohongshu's `X-s`/`X-t`) require a value computed per request by a small JS signer the schema ships in its `runtime.signer_js` block. The sandboxed JS engine that executes these lives in the CLI today, so API-only agents will hit 401/403 on those specific write actions until a hosted signing service ships (Phase 2).
 
 If the pulled schema has no `runtime` block, or has one with `requires_signer: false` on the card, every action is callable from any HTTP client. If `requires_signer: true`, tell the user that action needs the CLI or a future hosted-signing endpoint.
 
-Reads are never signed — every read endpoint in the registry works from any HTTP client.
+Many read endpoints can be self executed from any HTTP client. If a read endpoint declares session, runtime, browser, proxy, or hosted resource requirements, follow that endpoint's contract or use hosted `/v1/fetch`.
 
 **Actions perform real writes.** Posting a tweet, placing an order, or sending a DM is not a dry run. Confirm with the user before invoking any non-read endpoint, and never chain actions autonomously without explicit approval.
 
 ## The intent requirement
 
-`registry pull` and the `/v1/catalog` / `/v1/schemas/{site}/package` endpoints require an intent — a natural-language sentence explaining what you need. Not optional.
+`registry pull` and the `/v1/catalog` / `/v1/schemas/{site}/package` endpoints require an intent, a natural-language sentence explaining what you need. Not optional.
 
 - 20+ characters
 - 5+ distinct words
@@ -86,11 +113,11 @@ Bad: `"get data"`
 
 Many sites gate APIs behind Cloudflare / DataDome / PerimeterX or require session cookies. The schema's `session` block lists which cookies you need and (when relevant) a `bootstrap_url` the page fetches.
 
-**API-only agents** (Claude Web, remote bots, anything without a terminal): ask the user to paste the required cookies (DevTools → Application → Cookies → copy the values listed in `session.required_cookies`). Attach as a single `Cookie: name=value; name=value` header on every request. On 401/403, ask for a fresh paste — tokens like `_px3` (PerimeterX) or `msToken` (TikTok) rotate in hours.
+For hosted execution, do not ask the user for cookies by default. Call `/v1/fetch`; Hermai Cloud is responsible for the configured resource policy, warm session pool, proxy policy, signing, and projection. If hosted fetch returns `SESSION_REQUIRED` or `RESOURCE_UNAVAILABLE`, report that the hosted resource is not ready instead of asking a normal customer to paste cookies.
 
-**CLI users** (terminal): `hermai session import <site>` reads the cookies from the user's installed browser automatically; `hermai session bootstrap <site> --headful` warms a cold session; `hermai action` threads everything through on every call, rotating `Set-Cookie` back to disk on 2xx responses.
+For self execution, use the local session ladder. `hermai session import <site>` reads cookies from the user's installed browser, `hermai session bootstrap <site> --headful` warms a cold session, and `hermai action` threads cookies and signer state through each call.
 
-Full ladder, cookie-rotation rules, and the `session` block spec: [references/sessions.md](references/sessions.md).
+Ask for pasted cookies only when the user is intentionally self executing, has permission to use that account, and cannot use the CLI or browser import path. Full ladder, cookie rotation rules, and the `session` block spec: [references/sessions.md](references/sessions.md).
 
 ## Contributing a new site
 
@@ -101,6 +128,8 @@ That file is the contributor entry point — it tells you which other references
 **Cloud-ready means runnable and useful, not just accepted.** A production endpoint must have a real request contract (`method`, `url_template`, placeholder params, stable headers, captured body template when needed) and a projection contract (`response_schema` / `response_schema.html_list`) that returns the business-critical fields a caller reasonably expects. `HTTP 200`, `title`, `html_raw`, or one giant `page_summary` is not enough when the page contains structured facts such as price, currency, availability, annual fee, APR, rewards, hotel rooms, flight times, reviews, etc.
 
 Before pushing or marking a schema ready, smoke-test each endpoint through `/v1/fetch` with stable fixture params and inspect the JSON output. If the schema says cookies, browser bootstrap, signed headers, or IP-bound sessions are required, verify the resource policy, bootstrap recipe, and warm pool exist; the schema describes requirements but does not create production resources by itself. Pushes may appear in the registry before verification passes, so treat `verified=false` / `cloud_ready=false` as a production blocker until health passes.
+
+**Public schema copy must be generic product copy.** Never include customer names, prospect names, pilot context, API key ownership, sales context, competitor replacement language, or private relationship context in schema descriptions, endpoint purposes, endpoint descriptions, `cloud_ready_reason`, resource policy notes, generated docs, cards, examples, tests, or workflow names. Use Hermai owned internal smoke keys for readiness testing. Never use customer API keys.
 
 **Hermai is the interaction layer for agents, not just a read directory.** A good contribution covers what a user *does* on the site — browse, search, view, add to cart, log in, post — not just what's on the homepage. Schemas with only `product_detail` are 10% done.
 

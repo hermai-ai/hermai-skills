@@ -2,7 +2,9 @@
 
 **English** · [繁體中文](./README.zh-Hant.md) · [简体中文](./README.zh-Hans.md) · [日本語](./README.ja-JP.md)
 
-The `hermai` agent skill for the [Hermai](https://hermai.ai) registry — "Google for AI Agents". Install it in your agent and it can discover, call, and contribute to structured website APIs instead of scraping HTML.
+The `hermai` agent skill teaches agents how to use Hermai. Hermai provides reusable website schemas through an open source registry and hosted execution through Hermai Cloud.
+
+Use the skill when an agent needs to get data from a website, self execute a public schema, call hosted `/v1/fetch`, or contribute new schema coverage instead of scraping HTML from scratch.
 
 ## Install
 
@@ -19,8 +21,10 @@ Both audiences (callers and contributors) are served by the single `hermai` skil
 
 ## What the skill does
 
-- **For calling**: fires when a user wants data from a website — "check prices on allbirds.com", "find flights on kayak", "get listings from zillow". Teaches the agent to look up the site in the registry, pull the schema, fill endpoint templates, and handle authenticated actions (cookies, signers, bootstrap state). CLI (`hermai action`, `hermai registry pull`), MCP (`npx -y hermai-mcp`), and direct HTTP API paths are covered.
-- **For contributing**: fires when a user wants to add a site to the registry. Teaches the agent to use the [hermai-cli](https://github.com/hermai-ai/hermai-cli) discovery toolkit (`hermai detect`, `wellknown`, `probe`, `extract`, `intercept`, `introspect`, `session`) to document endpoints, capture real browser traffic for writes, compose a schema against format v0.1, and push it. Covers the intent category taxonomy, session-block rules for anti-bot sites, the runtime block (signer JS / bootstrap JS) for per-request-signed sites, and how validation errors map back to the spec.
+- **For calling**: fires when a user wants data from a website, such as checking prices on allbirds.com, finding flights on kayak, or getting listings from zillow. Teaches the agent to look up the site in the registry, pull the schema, self execute it when appropriate, or call hosted `/v1/fetch` when production execution is needed. CLI (`hermai action`, `hermai registry pull`), MCP (`npx -y hermai-mcp`), and direct HTTP API paths are covered.
+- **For contributing**: fires when a user wants to add a site to the registry. Teaches the agent to use the [hermai-cli](https://github.com/hermai-ai/hermai-cli) discovery toolkit (`hermai detect`, `wellknown`, `probe`, `extract`, `intercept`, `introspect`, `session`) to document endpoints, capture real browser traffic for writes, compose a schema against format v0.1, and push it. Covers the intent category taxonomy, session block rules for anti bot sites, the runtime block (signer JS / bootstrap JS) for per request signed sites, and how validation errors map back to the spec.
+- **For cloud readiness**: teaches the agent that `cloud_ready=true` requires useful data through hosted `/v1/fetch`, not just registry acceptance, a direct website HTTP 200, or raw HTML.
+- **For public schema copy**: teaches the agent to write generic product copy and keep customer names, prospect names, pilot context, sales context, API key ownership, and private relationship context out of public schema surfaces.
 
 Contributing requires `hermai-cli` installed locally:
 

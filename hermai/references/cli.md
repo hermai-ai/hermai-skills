@@ -1,6 +1,8 @@
 # Hermai CLI — Complete Command Reference
 
-The `hermai` CLI is the local half of Hermai: it talks to the hosted registry over HTTPS and runs probe/browser/HTTP logic locally. Everything site-specific lives in schema JSON — the CLI has no hardcoded per-site knowledge.
+The `hermai` CLI is the local half of Hermai. It talks to the hosted registry over HTTPS and runs probe, browser, and HTTP logic locally. Everything site specific lives in schema JSON. The CLI has no hardcoded per site knowledge.
+
+Use the CLI for self execution, local session handling, discovery, capture, and schema contribution. Use hosted `/v1/fetch` when you want Hermai Cloud to execute a registered endpoint in production and return projected JSON.
 
 This page documents every command shipped by the binary. See [schema-format.md](schema-format.md) for the schema shape, [sessions.md](sessions.md) for session handling, [runtime.md](runtime.md) for the executable glue inside a schema, and [contribute/overview.md](contribute/overview.md) for the schema-authoring flow.
 
@@ -234,6 +236,8 @@ hermai registry list --category flights --sort trending
 ### `hermai registry pull <site>`
 
 Downloads a schema package to `./<site>.schema.json` (or `-o` path). `--intent` is required: natural-language explanation of why the schema is being requested. Sent via `X-Hermai-Intent` header (not query string) to avoid access-log leakage.
+
+After pull, an agent can self execute the schema by calling the target website URLs directly. For production hosted execution, call `POST https://api.hermai.ai/v1/fetch` with the same `site`, endpoint name, and params.
 
 Flags: `--intent "..."` (required), `--version <hash>`, `-o/--out <path>`.
 
