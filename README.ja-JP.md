@@ -24,7 +24,7 @@ Claude Code、Codex、Cursor、OpenCode、その他 40 以上の agent で、[Ve
 - **利用する場合**: ユーザーがウェブサイトからデータを取得したいとき、例えば「allbirds.com で価格を確認して」「kayak でフライトを探して」「zillow からリスティングを取得して」といったリクエストで発動します。agent に対して、レジストリでサイトを検索し、schema を取得し、適切な場合は自己実行し、本番実行が必要な場合はホストされた `/v1/fetch` を呼び出す方法を教えます。CLI (`hermai action`、`hermai registry pull`)、MCP (`npx -y hermai-mcp`)、直接 HTTP API のパスをカバーしています。
 - **貢献する場合**: ユーザーが新しいサイトをレジストリに追加したいときに発動します。agent に対して、[hermai-cli](https://github.com/hermai-ai/hermai-cli) の探索ツールキット (`hermai detect`、`wellknown`、`probe`、`extract`、`intercept`、`introspect`、`session`) を使ってエンドポイントをドキュメント化し、書き込み操作のための実際のブラウザトラフィックをキャプチャし、フォーマット v0.1 に対して schema を構成し、プッシュする方法を教えます。intent カテゴリの分類体系、ボット対策サイト向けの session-block ルール、リクエストごとに署名が必要なサイト向けの runtime block（signer JS / bootstrap JS）、そしてバリデーションエラーが仕様書にどのようにマッピングされるかをカバーしています。
 - **Cloud ready**: `cloud_ready=true` は、ホストされた `/v1/fetch` が有用なデータを返す場合にのみ成立することを agent に教えます。registry で受理されたこと、直接サイトへの HTTP 200、または raw HTML だけでは不十分です。
-- **公開 schema の文面**: agent に汎用的なプロダクト向け文面を書かせ、顧客名、見込み顧客名、pilot の背景、営業文脈、API key の所有者、非公開の関係文脈を公開 schema の表面に出さないようにします。
+- **公開 schema の文面**: agent に schema 利用者向けの中立的なプロダクト文書を書かせ、内部の事業文脈、認証情報、運用上の詳細を公開 schema の表面に出さないようにします。
 
 貢献するにはローカルに `hermai-cli` のインストールが必要です:
 

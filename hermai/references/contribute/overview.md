@@ -117,13 +117,13 @@ If the data you want isn't reachable with any selector you can find — that's a
 
 ## Schema publishing standards
 
-Public schema copy must be generic product copy.
+Public schema content should read like product documentation for the schema user.
 
-Never include customer names, prospect names, pilot notes, API key ownership, sales context, competitor replacement language, or private relationship context. This applies to top level descriptions, endpoint purposes, endpoint descriptions, `cloud_ready_reason`, resource policy notes, generated docs, schema cards, examples, tests, and workflow names.
+Describe the data or action an endpoint provides, the inputs it needs, the output shape callers can expect, readiness state, and meaningful limits.
 
-Write for the user of the schema. Describe what data or action the endpoint provides. Do not explain who requested it, why a sales opportunity needs it, or which customer will test it.
+Keep internal business context, credentials, and operational details out of schema artifacts. This applies to top level descriptions, endpoint purposes, endpoint descriptions, `cloud_ready_reason`, resource policy notes, generated docs, schema cards, examples, tests, and workflow names.
 
-Use Hermai owned internal smoke keys for readiness tests. Never use customer API keys, even when the customer supplied the key or asked us to test their account.
+Use Hermai owned internal credentials for readiness tests.
 
 `cloud_ready=true` requires useful data through hosted `/v1/fetch`. Registry acceptance, self execution, raw HTML, or a direct website HTTP 200 is not enough.
 

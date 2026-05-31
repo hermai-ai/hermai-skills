@@ -15,7 +15,7 @@ The registry stores a schema as a single JSON document. Every field in this refe
 - [Probe fixtures](#probe-fixtures)
 - [Public card vs. full package](#public-card-vs-full-package)
 - [Description rules](#description-rules)
-- [Public schema copy rules](#public-schema-copy-rules)
+- [Public content standards](#public-content-standards)
 - [Verified, not wishful](#verified-not-wishful)
 
 ## Example
@@ -296,25 +296,21 @@ Write all schema-facing text in English: top-level `description`, endpoint `purp
 
 Quick test: would a competitor gain a meaningful shortcut to re-implement the site by reading this field without an API key? If yes, the content belongs under `description` (per-endpoint), inside the session block, or inside the runtime JS sources — not on the public card.
 
-## Public schema copy rules
+## Public content standards
 
-Public schema copy must be generic product copy written for the user of the schema.
+Public schema content should read like product documentation for the schema user.
 
-Never include customer names, prospect names, pilot notes, API key ownership, sales context, competitor replacement language, or private relationship context. This applies to top level descriptions, endpoint purposes, endpoint descriptions, `cloud_ready_reason`, resource policy notes, generated docs, schema cards, examples, tests, and workflow names.
+Describe the data or action an endpoint provides, the inputs it needs, the output shape callers can expect, readiness state, and meaningful limits.
 
-Good public copy says what the endpoint returns:
+Keep internal business context, credentials, and operational details out of schema artifacts. This applies to top level descriptions, endpoint purposes, endpoint descriptions, `cloud_ready_reason`, resource policy notes, generated docs, schema cards, examples, tests, and workflow names.
+
+For example, product detail copy should focus on the returned data:
 
 ```text
 Fetch a product detail page and return title, price, availability, images, and canonical URL when present.
 ```
 
-Bad public copy explains why a private stakeholder asked for it:
-
-```text
-Pilot schema for a named customer to evaluate a retailer integration.
-```
-
-Use Hermai owned internal smoke keys for readiness tests. Never use customer API keys. Do not mark an endpoint cloud ready until hosted `/v1/fetch` returns useful projected data with stable fixture params.
+Use Hermai owned internal credentials for readiness tests. Do not mark an endpoint cloud ready until hosted `/v1/fetch` returns useful projected data with stable fixture params.
 
 ## Verified, not wishful
 

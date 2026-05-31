@@ -24,7 +24,7 @@ npx skills add hermai-ai/hermai-skills --skill hermai -a claude-code
 - **调用网站**:当用户想从网站获取数据时触发,例如"查询 allbirds.com 的价格"、"在 kayak 找航班"、"抓取 zillow 的房源清单"。教 agent 在 registry 中查询网站、拉取 schema、在适合时自行执行,或在需要生产执行时调用托管的 `/v1/fetch`。同时覆盖 CLI(`hermai action`、`hermai registry pull`)、MCP(`npx -y hermai-mcp`)与直接 HTTP API 路径。
 - **贡献网站**:当用户想把网站加入 registry 时触发。教 agent 使用 [hermai-cli](https://github.com/hermai-ai/hermai-cli) 的发现工具组(`hermai detect`、`wellknown`、`probe`、`extract`、`intercept`、`introspect`、`session`)记录端点、通过 headful 捕获真实浏览器流量用于写入操作、按 format v0.1 编写 schema 并推送。覆盖 intent 分类、anti-bot 网站的 session block 规则、每次请求需签名网站所需的 runtime block(signer JS / bootstrap JS),以及校验错误如何映射到规范。
 - **Cloud ready**:教 agent 只有在托管 `/v1/fetch` 返回有用数据时才把 `cloud_ready=true` 当作成立,而不是只看 registry 接受、直接网站 HTTP 200 或原始 HTML。
-- **公开 schema 文案**:教 agent 使用通用产品文案,不要把客户名、潜在客户名、pilot 背景、销售语境、API key 归属或私人关系背景写进公开 schema 表面。
+- **公开 schema 文案**:教 agent 为 schema 用户编写中立的产品文档,并把内部业务背景、凭据和运维细节留在公开 schema 表面之外。
 
 贡献 schema 需要先在本地安装 `hermai-cli`:
 
