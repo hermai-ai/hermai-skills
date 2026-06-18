@@ -82,6 +82,7 @@ The MCP server exposes:
 
 - `lookup_schema` — search for a schema by domain, task, category, or verification state.
 - `list_public_schemas` — browse the public schema catalog.
+- `fetch_schema` — execute a schema through hosted `/v1/fetch` and return live data. Only exposed when `HERMAI_API_KEY` (or `HERMAI_PLATFORM_KEY`) is set, and consumes credits per call (read workflows only).
 - `submit_schema_request` — submit the six-field intake for a missing or brittle workflow.
 - `classify_browser_workflow` — locally classify prose as direct API, hidden endpoint, browser-only, or needs owner/auth.
 - `check_schema_request_status` — check a submitted request.
