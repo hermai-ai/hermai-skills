@@ -288,6 +288,8 @@ Write all schema-facing text in English: top-level `description`, endpoint `purp
   - Good: *"Search public repositories, get repository details, and list of users' public repos, etc."* (github.com)
   - Good: *"Read public Threads profiles and posts. Pulls display name, bio, follower counts, plus every post in a thread with text, images, timestamps, and like counts."* (threads.com)
   - Bad: naming endpoints, URL paths, parse-path selectors, script tag IDs, or CLI commands like `hermai probe` / `hermai extract`.
+  - Scope to THIS schema, not the brand. Describe only what these endpoints actually return, never the site's whole product line. If the only endpoint is retail electricity prices, do not write *"generation, consumption, and fuel statistics."* Claiming coverage the endpoints do not deliver is the single most common description defect.
+  - Substance, not a label. *"Structured X public Y API"* is not a description. Name the records or fields a caller gets back, then one or two concrete use cases. Plain text, no em dashes, one or two sentences.
   - Sanity check: re-read your draft and ask *"would this sentence still make sense to someone who has never used the CLI?"* If not, rewrite.
 - **Per-endpoint `purpose`** → public card. One sentence, user-voice, names the data this endpoint returns. Same rules as the top-level description.
 - **Per-endpoint `description`** → full package only. Technical how-to: parse paths, selectors, query param semantics, field lists, JSON script tag IDs, pagination and edge cases. An agent reads it only after pulling the full package.
@@ -303,6 +305,14 @@ Public schema content should read like product documentation for the schema user
 Describe the data or action an endpoint provides, the inputs it needs, the output shape callers can expect, readiness state, and meaningful limits.
 
 Keep internal business context, credentials, and operational details out of schema artifacts. This applies to top level descriptions, endpoint purposes, endpoint descriptions, `cloud_ready_reason`, resource policy notes, generated docs, schema cards, examples, tests, and workflow names.
+
+Never name on a public card, in the top-level `description` or any endpoint `purpose`:
+
+- The third-party providers or data sources a schema routes through or falls back to (a backing academic-graph, DOI, or search vendor). Name the site, never the plumbing behind it.
+- The target's tech stack (Next.js, CloudFront, Vite, Flutter) or its anti-bot posture (*"no anti-bot"*, *"no session needed"*, *"plain HTTP"*). These describe how the site is built or defended, not the data.
+- Any internal, beta, or staging URL, or reverse-engineering notes (a compiled bundle, a proto descriptor, *"recovered from ..."*).
+
+The registry enforces this on push: the clearest internal-leak phrasings are rejected outright, and thin, over-long, em-dashed, or stack-naming copy comes back as a non-blocking warning. Write the card right the first time and you will not see either.
 
 For example, product detail copy should focus on the returned data:
 
