@@ -1,0 +1,46 @@
+{
+  "version": "v1",
+  "source": "bundled local contract fixtures",
+  "brands": [
+    {
+      "id": "emberfox-bright",
+      "name": "Emberfox",
+      "domain": "emberfox.test",
+      "source_kind": "synthetic",
+      "scenario": "bright accent",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"emberfox-standard.svg","fallback":"none"},"compact":{"asset":"emberfox-compact.svg","fallback":"none"},"on_dark":{"asset":"emberfox-on-dark.svg","fallback":"none"}},"colors":{"action":"#E85D04","on_action":"#111827","text_accent":"#A13D00","tint":"#FFF0E6","on_tint":"#271500","border":"#E5B993","focus":"#A13D00","data_primary":"#E85D04"}}
+    },
+    {
+      "id": "relaydesk-dark",
+      "name": "Relaydesk",
+      "domain": "relaydesk.test",
+      "source_kind": "synthetic",
+      "scenario": "dark accent",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"relaydesk-standard.svg","fallback":"none"},"compact":{"asset":"relaydesk-compact.svg","fallback":"none"},"on_dark":{"asset":"relaydesk-on-dark.svg","fallback":"none"}},"colors":{"action":"#151A22","on_action":"#FFFFFF","text_accent":"#151A22","tint":"#ECEEF1","on_tint":"#151A22","border":"#9CA3AF","focus":"#151A22","data_primary":"#151A22"}}
+    },
+    {
+      "id": "brightbird-near-white",
+      "name": "Brightbird",
+      "domain": "brightbird.test",
+      "source_kind": "synthetic",
+      "scenario": "near white raw accent rejected",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"brightbird-standard.svg","fallback":"none"},"compact":{"asset":"brightbird-compact.svg","fallback":"none"},"on_dark":{"asset":"brightbird-on-dark.svg","fallback":"none"}},"colors":{"action":"#58CC02","on_action":"#172B00","text_accent":"#397F00","tint":"#EFFADF","on_tint":"#172B00","border":"#B8D796","focus":"#397F00","data_primary":"#58CC02"}}
+    },
+    {
+      "id": "longform-cooperative",
+      "name": "Longform Technology Cooperative",
+      "domain": "longform-cooperative.test",
+      "source_kind": "synthetic",
+      "scenario": "long company name",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"longform-standard.svg","fallback":"none"},"compact":{"asset":"longform-compact.svg","fallback":"none"},"on_dark":{"asset":"longform-on-dark.svg","fallback":"none"}},"colors":{"action":"#1A1A1A","on_action":"#FFFFFF","text_accent":"#1A1A1A","tint":"#EEEEEE","on_tint":"#1A1A1A","border":"#9D9D9D","focus":"#1A1A1A","data_primary":"#1A1A1A"}}
+    },
+    {
+      "id": "no-logo-labs-fallback",
+      "name": "No Logo Labs",
+      "domain": "no-logo-labs.test",
+      "source_kind": "synthetic",
+      "scenario": "missing logo and no usable accent",
+      "application_theme": {"version":"v1","mode":"fallback","identity":{"standard":{"asset":null,"fallback":"monogram"},"compact":{"asset":null,"fallback":"monogram"},"on_dark":{"asset":null,"fallback":"company_name"}},"colors":null,"fallback":{"reason":"no_usable_accent","strategy":"preserve_host_theme"}}
+    }
+  ]
+}
