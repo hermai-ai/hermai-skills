@@ -10,7 +10,7 @@ Create `.hermai/brand-preview-harness.html` from the approved dashboard componen
 * Put `{{HERMAI_COMPANY_NAME}}` inside the element with `data-hermai-company`.
 * Put `{{HERMAI_LOGO_STANDARD}}`, `{{HERMAI_LOGO_COMPACT}}`, and `{{HERMAI_LOGO_ON_DARK}}` inside appropriate elements with `data-hermai-logo`.
 * Use `--hermai-brand`, `--hermai-on-brand`, `--hermai-text-accent`, `--hermai-tint`, `--hermai-border`, `--hermai-focus`, and `--hermai-data-primary` for approved brand surfaces.
-* Keep semantic status colors, code, API keys, user photos, integration marks, and the application canvas independent from these variables.
+* Keep semantic status colors, code, API keys, user photos, integration marks, and the application canvas independent from these variables. This includes a profit or loss, danger, or success color. Render warns when a selector name reads as a status color and is still bound to a token, but treat that warning as a prompt to check by hand, not as the only safeguard.
 
 ## Safety
 
