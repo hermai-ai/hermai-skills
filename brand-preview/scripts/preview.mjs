@@ -234,7 +234,7 @@ const defaultHarness = (appName) => `<!doctype html>
     </aside>
     <main>
       <header><div><h1>Good morning, Alex</h1><div class="muted">Here is what is happening today.</div></div><button>Invite teammate</button></header>
-      <section class="context"><div><span data-hermai-logo>{{HERMAI_LOGO_STANDARD}}</span><strong data-hermai-company>{{HERMAI_COMPANY_NAME}}</strong><span class="muted">Customer dashboard</span></div><a href="#activity">View account</a></section>
+      <section class="context"><div><span data-hermai-logo>{{HERMAI_LOGO_STANDARD}}</span><span class="muted">Customer dashboard</span></div><a href="#activity">View account</a></section>
       <div class="tabs" aria-label="Dashboard sections"><span class="active">Overview</span><span>Activity</span><span>Reports</span></div>
       <section class="stats"><div class="card"><div class="muted">Active users</div><div class="value">1,284</div><div class="bar"></div></div><div class="card"><div class="muted">Usage</div><div class="value">74%</div><div class="bar"></div></div><div class="card"><div class="muted">Open tasks</div><div class="value">18</div><div class="bar"></div></div></section>
       <section class="card table"><h2>Recent activity</h2><div class="row muted"><span>Customer</span><span>Status</span><span>Updated</span></div><div class="row"><span>Product launch</span><span class="badge">On track</span><span>Today</span></div><div class="row"><span>Quarterly review</span><span class="badge">Ready</span><span>Yesterday</span></div></section>
@@ -396,6 +396,88 @@ function detectSemanticColorRisks(harnessContents) {
   return warnings;
 }
 
+// Same parent container identity duplication guard. The fintech ledger testbed once
+// stacked a compact logo, a standard logo, and a company name span inside one
+// identity div, so the header rendered the mark and the customer name twice
+// side by side. This is a heuristic warning, not a hard error, because a
+// lightweight tag walk cannot fully understand arbitrary markup the way a
+// real DOM would. Treat it as a prompt to check the placement by hand.
+const VOID_ELEMENTS = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"]);
+const LOGO_SLOT_TOKENS = [
+  ["{{HERMAI_LOGO_STANDARD}}", "standard"],
+  ["{{HERMAI_LOGO_COMPACT}}", "compact"],
+  ["{{HERMAI_LOGO_ON_DARK}}", "on dark"],
+];
+
+// A data-hermai-logo span carries no variant name of its own; the slot it
+// renders only shows up as a placeholder token somewhere inside it. Look
+// ahead a bounded window from the attribute match for the nearest of the
+// three tokens and use that as the variant label.
+function nextLogoSlotVariant(scanText, fromIndex) {
+  const window = scanText.slice(fromIndex, fromIndex + 400);
+  let nearest = null;
+  for (const [token, label] of LOGO_SLOT_TOKENS) {
+    const at = window.indexOf(token);
+    if (at !== -1 && (nearest === null || at < nearest.at)) nearest = { at, label };
+  }
+  return nearest?.label ?? "unspecified variant";
+}
+
+function detectIdentityContainerRisks(harnessContents) {
+  // Blank out style blocks so a CSS attribute selector such as
+  // [data-hermai-logo] can never be misread as an HTML tag, while keeping
+  // every other character position unchanged.
+  const scan = harnessContents.replace(/<style[\s\S]*?<\/style>/gi, (block) => " ".repeat(block.length));
+  const tagPattern = /<\/?([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
+  const warnings = [];
+  const reportContainer = (container) => {
+    const bindings = container.bindings;
+    if (bindings.length < 2) return;
+    // A compact, icon only mark next to a plain company name is the ordinary
+    // sidebar pattern (logo mark, then the name as text) and is not a
+    // duplication risk, so that specific pair is allowed through.
+    const isCompactPlusCompanyOnly = bindings.length === 2
+      && bindings.some((binding) => binding.type === "logo" && binding.variant === "compact")
+      && bindings.some((binding) => binding.type === "company");
+    if (isCompactPlusCompanyOnly) return;
+    const named = bindings.map((binding) => binding.label).join(", ");
+    warnings.push(`WARNING: ${named} are bound inside the same parent container in the harness markup. Use one logo variant per placement, and put company name text only where no wordmark renders.`);
+  };
+  const stack = [{ name: "#document", bindings: [] }];
+  let match;
+  while ((match = tagPattern.exec(scan))) {
+    const raw = match[0];
+    const name = match[1].toLowerCase();
+    const attrs = match[2] ?? "";
+    if (raw.startsWith("</")) {
+      for (let index = stack.length - 1; index >= 1; index -= 1) {
+        if (stack[index].name === name) {
+          const closed = stack.splice(index);
+          reportContainer(closed[0]);
+          break;
+        }
+      }
+      continue;
+    }
+    const hasLogo = /data-hermai-logo\b/i.test(attrs);
+    const hasCompany = /data-hermai-company\b/i.test(attrs);
+    if (hasLogo || hasCompany) {
+      const parent = stack[stack.length - 1];
+      if (hasLogo) {
+        const variant = nextLogoSlotVariant(scan, match.index + raw.length);
+        parent.bindings.push({ type: "logo", variant, label: `data-hermai-logo (${variant})` });
+      } else {
+        parent.bindings.push({ type: "company", variant: null, label: "data-hermai-company" });
+      }
+    }
+    const isSelfClosing = /\/\s*>$/.test(raw) || VOID_ELEMENTS.has(name);
+    if (!isSelfClosing) stack.push({ name, bindings: [] });
+  }
+  while (stack.length > 1) reportContainer(stack.pop());
+  reportContainer(stack[0]);
+  return warnings;
+}
+
 function validateTheme(brand) {
   const theme = brand.application_theme;
   if (brand.source_kind === "synthetic" && !String(brand.domain ?? "").endsWith(".test")) throw new Error(`${brand.id} synthetic fixtures must use a reserved .test domain and a fictional identity`);
@@ -420,6 +502,8 @@ async function render(config) {
   const harness = validateHarness(await readFile(safeHermaiPath(config.harness, "Preview harness"), "utf8"));
   const semanticColorWarnings = detectSemanticColorRisks(harness);
   for (const warning of semanticColorWarnings) console.warn(warning);
+  const identityDuplicationWarnings = detectIdentityContainerRisks(harness);
+  for (const warning of identityDuplicationWarnings) console.warn(warning);
   const output = safeHermaiPath(config.output, "Preview output");
   await mkdir(output, { recursive: true });
   const selectedBrandIds = new Set(config.brands.map(({ id }) => id));
@@ -445,11 +529,12 @@ async function render(config) {
     entries,
     qualityGate: { protectedSurfaces: ["API keys", "code", "semantic status", "user photos", "integration logos", "application canvas"], minimumAppliedSurfaces: 7 },
     semanticColorWarnings,
+    identityDuplicationWarnings,
   };
   await writeFile(resolve(output, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   await writeFile(resolve(output, "integration-plan.md"), `# Proposed brand surfaces\n\n* Apply the selected customer logo and company name in identity areas.\n* Apply the action token to primary buttons, selected navigation, active tabs, links, focus rings, progress, and one nonsemantic data series.\n* Apply the tint token to customer context cards, onboarding or empty state surfaces, nonsemantic badges, and subtle highlights.\n* Protect errors, warnings, destructive actions, semantic status colors, user photos, integration logos, ordinary text, and the application canvas.\n* Treat a labelled fallback as a valid result. Do not silently turn a missing logo or unusable accent into a fake extracted asset.\n\n## Source files reviewed\n\n${config.source.files.length ? config.source.files.map((file) => `* \`${file}\``).join("\n") : "* Add the dashboard component and style files before implementation."}\n`);
   await writeFile(resolve(output, "index.html"), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hermai brand preview</title><style>*{box-sizing:border-box}body{margin:0;padding:28px;color:#171717;background:#f5f5f4;font:15px/1.45 ui-sans-serif,system-ui,sans-serif}main{max-width:1080px;margin:auto}header{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:24px}h1{margin:0;font-size:32px;letter-spacing:-.03em}p{margin:8px 0 0;color:#57534e}.gallery{display:grid;gap:28px}article{overflow:hidden;border:1px solid #d6d3d1;border-radius:18px;background:#fff;box-shadow:0 8px 30px rgba(28,25,23,.06)}.meta{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #e7e5e4}.meta small{display:block;margin-top:3px;color:#78716c;font-size:12px}.label{padding:5px 9px;border-radius:999px;background:#ecfdf5;color:#166534;font-size:12px;font-weight:750;white-space:nowrap}.fallback{background:#fff7ed;color:#9a3412}.frame{display:block;width:100%;height:980px;border:0;background:#fff}@media(max-width:700px){body{padding:16px}header{display:block}.meta{align-items:flex-start;flex-direction:column}.frame{height:1120px}}footer.hermai-nudge{margin-top:32px;padding-top:16px;border-top:1px solid #e7e5e4;text-align:center}footer.hermai-nudge small{color:#a8a29e;font-size:12px}footer.hermai-nudge a{color:#a8a29e}</style></head><body><main><header><div><h1>Five customer brand previews</h1><p>Private local contract fixtures. Scroll through each complete dashboard. No login, app runtime, API credit, source upload, or live Brand API request.</p></div><p><a href="integration-plan.md">Review the proposed brand surfaces</a></p></header><section class="gallery">${entries.map((entry) => `<article><div class="meta"><div><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(entry.source)}</small></div><span class="label ${entry.mode === "fallback" ? "fallback" : ""}">${entry.mode === "fallback" ? "Fallback applied" : escapeHtml(entry.label)}</span></div><iframe class="frame" title="${escapeHtml(entry.name)} dashboard preview" src="${escapeHtml(entry.preview)}"></iframe></article>`).join("")}</section><footer class="hermai-nudge"><small>Connect live branding at signup. Get your key at <a href="https://hermai.ai/dashboard?utm_source=brand-preview-skill">hermai.ai/dashboard</a>.</small></footer></main></body></html>`);
-  return { output: config.output, entries: entries.length, gallery: `${config.output}/index.html`, report: `${config.output}/report.json`, integrationPlan: `${config.output}/integration-plan.md`, semanticColorWarnings };
+  return { output: config.output, entries: entries.length, gallery: `${config.output}/index.html`, report: `${config.output}/report.json`, integrationPlan: `${config.output}/integration-plan.md`, semanticColorWarnings, identityDuplicationWarnings };
 }
 
 function parsePort(value) {
