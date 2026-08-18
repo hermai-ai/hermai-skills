@@ -40,6 +40,84 @@ const safeHermaiPath = (value, purpose) => {
 const readOptional = async (path) => { try { return await readFile(path, "utf8"); } catch { return null; } };
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
 
+// Selector name vocabulary shared by the CSS module classifier below and the
+// semantic status guard in validateHarness. A selector that matches this
+// pattern is treated as protected status meaning, such as a profit and loss
+// or danger and success indicator, and is kept out of the brand token
+// classification buckets even when its color would otherwise look bucketable.
+const SEMANTIC_STATUS_NAME_PATTERN = /danger|negative|decline|loss|debit|error|critical|fail|block|overdue|destructive|alert|warning|success|positive|gain|profit|credit|healthy|complete|approved|ontrack|passed/i;
+const DANGER_NAME_PATTERN = /danger|negative|decline|loss|debit|error|critical|fail|block|overdue|destructive|alert/i;
+const SUCCESS_NAME_PATTERN = /success|positive|gain|profit|credit|healthy|complete|approved|ontrack|passed/i;
+
+// Bounds for the CSS module glob so a large repository cannot make inspect
+// slow or expensive. These caps are intentionally small; inspect only needs
+// enough signal to prove real tokens exist, not a full catalog.
+// Kept low enough that even a fully module styled app stays under the 20
+// entry cap validateConfig enforces on config.source.files, alongside the
+// route and global style candidates inspect already collects.
+const MAX_MODULE_CSS_FILES = 10;
+const MAX_MODULE_CSS_BYTES = 200_000;
+const MAX_MODULE_CSS_DIRECTORIES = 400;
+const SKIP_DIRECTORY_NAMES = new Set(["node_modules", ".git", ".next", ".turbo", ".hermai", ".vercel", "dist", "build", "coverage", "out"]);
+
+async function findModuleCssFiles(rootDirectory) {
+  const found = [];
+  const queue = [rootDirectory];
+  let visitedDirectories = 0;
+  while (queue.length && found.length < MAX_MODULE_CSS_FILES && visitedDirectories < MAX_MODULE_CSS_DIRECTORIES) {
+    const directory = queue.shift();
+    visitedDirectories += 1;
+    const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (!SKIP_DIRECTORY_NAMES.has(entry.name)) queue.push(resolve(directory, entry.name));
+        continue;
+      }
+      if (entry.isFile() && entry.name.endsWith(".module.css")) found.push(resolve(directory, entry.name));
+      if (found.length >= MAX_MODULE_CSS_FILES) break;
+    }
+  }
+  return found;
+}
+
+// CSS modules rarely name a custom property, so there is no "--primary"
+// style identifier to pattern match the way the four fixed style paths
+// allow. Instead this classifies each rule by its own selector name and
+// keeps the same four token buckets, storing a selector plus value
+// description in place of a variable name. Selectors that look like a
+// protected status color are skipped so a real profit and loss color never
+// gets offered up as a brand token candidate.
+const MODULE_COLOR_PROPERTIES = new Set(["color", "background-color", "background", "border-color", "fill", "stroke", "outline-color"]);
+const MODULE_HEX_COLOR_PATTERN = /#[0-9a-fA-F]{3,8}\b/;
+// Strip block comments before any rule regex runs. A selector otherwise
+// picks up the free text of a preceding comment, such as a note that a rule
+// carries fixed profit and loss meaning, and that free text can accidentally
+// satisfy or defeat the name pattern checks below.
+const stripCssComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, " ");
+
+function classifyModuleCssColors(contents, tokens) {
+  for (const [, selectorRaw, body] of stripCssComments(contents).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = selectorRaw.trim();
+    if (!selector || SEMANTIC_STATUS_NAME_PATTERN.test(selector)) continue;
+    let backgroundHex = null;
+    let textHex = null;
+    for (const [, property, value] of body.matchAll(/([\w-]+)\s*:\s*([^;]+);?/g)) {
+      const propertyName = property.trim().toLowerCase();
+      if (!MODULE_COLOR_PROPERTIES.has(propertyName)) continue;
+      const match = value.match(MODULE_HEX_COLOR_PATTERN);
+      if (!match) continue;
+      if (propertyName === "background-color" || propertyName === "background") backgroundHex = match[0];
+      if (propertyName === "color") textHex = match[0];
+    }
+    if (!backgroundHex && !textHex) continue;
+    const normalized = selector.toLowerCase();
+    if (!tokens.primary && backgroundHex && /button|btn|cta|submit|primary|brand/.test(normalized)) tokens.primary = `${selector} (background-color: ${backgroundHex})`;
+    if (!tokens.onPrimary && textHex && /button|btn|cta|submit|primary|brand/.test(normalized)) tokens.onPrimary = `${selector} (color: ${textHex})`;
+    if (!tokens.accent && (backgroundHex || textHex) && /link|anchor|accent|focus/.test(normalized)) tokens.accent = `${selector} (${backgroundHex ? "background-color" : "color"}: ${backgroundHex ?? textHex})`;
+    if (!tokens.subtle && backgroundHex && /muted|tint|subtle|badge|chip|pill/.test(normalized)) tokens.subtle = `${selector} (background-color: ${backgroundHex})`;
+  }
+}
+
 async function inspect() {
   const manifest = JSON.parse((await readOptional(resolve(projectRoot, "package.json"))) ?? "{}");
   const dependencies = { ...(manifest.dependencies ?? {}), ...(manifest.devDependencies ?? {}) };
@@ -73,6 +151,25 @@ async function inspect() {
       if (!tokens.accent && /accent|link|focus/.test(normalized)) tokens.accent = name;
       if (!tokens.subtle && /subtle|muted|tint/.test(normalized)) tokens.subtle = name;
     }
+  }
+  // The four paths above are blind to CSS modules, so an app styled entirely
+  // with *.module.css files reported an empty tokens object even though it
+  // has real colors. Glob module files under the same candidate roots,
+  // bounded by file count and bytes read, and classify by selector name
+  // since CSS modules have no custom property name to pattern match.
+  let moduleCssBytesRead = 0;
+  const moduleCssFiles = [];
+  for (const candidate of candidates) {
+    const found = await findModuleCssFiles(resolve(projectRoot, candidate)).catch(() => []);
+    moduleCssFiles.push(...found);
+  }
+  for (const file of [...new Set(moduleCssFiles)].slice(0, MAX_MODULE_CSS_FILES)) {
+    if (moduleCssBytesRead >= MAX_MODULE_CSS_BYTES) break;
+    const contents = await readOptional(file);
+    if (!contents) continue;
+    moduleCssBytesRead += Buffer.byteLength(contents, "utf8");
+    sourceCandidates.push(relative(projectRoot, file));
+    classifyModuleCssColors(contents, tokens);
   }
   return {
     version: 2,
@@ -242,6 +339,63 @@ function contrast(first, second) {
   return (a + .05) / (b + .05);
 }
 
+function hueAndSaturation(hex) {
+  const [r, g, b] = rgb(hex);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const lightness = (max + min) / 2;
+  const delta = max - min;
+  if (delta === 0) return { hue: 0, saturation: 0 };
+  const saturation = delta / (1 - Math.abs(2 * lightness - 1));
+  let hue;
+  if (max === r) hue = 60 * (((g - b) / delta) % 6);
+  else if (max === g) hue = 60 * ((b - r) / delta + 2);
+  else hue = 60 * ((r - g) / delta + 4);
+  if (hue < 0) hue += 360;
+  return { hue, saturation };
+}
+
+// A general check is impossible without understanding the app, so this is a
+// tractable heuristic, not a guarantee. It cannot recover the literal color a
+// binding replaced, since a token reference such as var(--hermai-brand)
+// carries no color of its own by the time the harness reaches validation.
+// Instead it treats the selector name as the signal (amountPositive,
+// changeNegative, and similar read as status meaning) and reports a
+// representative reference color for that status family, reusing the exact
+// green and red the corrected fintech ledger harness keeps hardcoded, so the
+// warning names a real, plausible original rather than an invented one.
+const DANGER_REFERENCE_HEX = "#c0281c";
+const SUCCESS_REFERENCE_HEX = "#1a7f37";
+const HUE_BAND_SATURATION_FLOOR = 0.35;
+const isDangerHue = ({ hue, saturation }) => saturation >= HUE_BAND_SATURATION_FLOOR && (hue <= 15 || hue >= 345);
+const isSuccessHue = ({ hue, saturation }) => saturation >= HUE_BAND_SATURATION_FLOOR && hue >= 90 && hue <= 150;
+const BINDING_COLOR_PROPERTIES = new Set(["color", "background-color", "background", "border-color", "fill", "stroke", "outline-color"]);
+
+function detectSemanticColorRisks(harnessContents) {
+  const styleMatch = harnessContents.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  if (!styleMatch) return [];
+  const warnings = [];
+  for (const [, selectorRaw, body] of stripCssComments(styleMatch[1]).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = selectorRaw.trim();
+    if (!selector) continue;
+    for (const [, property, value] of body.matchAll(/([\w-]+)\s*:\s*([^;]+);?/g)) {
+      const propertyName = property.trim().toLowerCase();
+      if (!BINDING_COLOR_PROPERTIES.has(propertyName)) continue;
+      const tokenMatch = value.trim().match(/^var\(\s*(--hermai-[a-z-]+)\s*\)$/i);
+      if (!tokenMatch) continue;
+      const isDangerName = DANGER_NAME_PATTERN.test(selector);
+      const isSuccessName = SUCCESS_NAME_PATTERN.test(selector);
+      if (!isDangerName && !isSuccessName) continue;
+      const referenceHex = isDangerName ? DANGER_REFERENCE_HEX : SUCCESS_REFERENCE_HEX;
+      const family = isDangerName ? "danger red" : "success green";
+      const bands = isDangerName ? isDangerHue(hueAndSaturation(referenceHex)) : isSuccessHue(hueAndSaturation(referenceHex));
+      if (!bands) continue;
+      warnings.push(`WARNING: the binding "${selector} { ${propertyName}: var(${tokenMatch[1]}) }" rebrands a selector whose name reads as a ${family} status color, close to reference color ${referenceHex}. Semantic status colors such as profit, loss, danger, and success must not be rebranded. Confirm this binding is not a status color before shipping this harness.`);
+    }
+  }
+  return warnings;
+}
+
 function validateTheme(brand) {
   const theme = brand.application_theme;
   if (brand.source_kind === "synthetic" && !String(brand.domain ?? "").endsWith(".test")) throw new Error(`${brand.id} synthetic fixtures must use a reserved .test domain and a fictional identity`);
@@ -264,6 +418,8 @@ function validateTheme(brand) {
 
 async function render(config) {
   const harness = validateHarness(await readFile(safeHermaiPath(config.harness, "Preview harness"), "utf8"));
+  const semanticColorWarnings = detectSemanticColorRisks(harness);
+  for (const warning of semanticColorWarnings) console.warn(warning);
   const output = safeHermaiPath(config.output, "Preview output");
   await mkdir(output, { recursive: true });
   const selectedBrandIds = new Set(config.brands.map(({ id }) => id));
@@ -288,11 +444,12 @@ async function render(config) {
     source: config.source,
     entries,
     qualityGate: { protectedSurfaces: ["API keys", "code", "semantic status", "user photos", "integration logos", "application canvas"], minimumAppliedSurfaces: 7 },
+    semanticColorWarnings,
   };
   await writeFile(resolve(output, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   await writeFile(resolve(output, "integration-plan.md"), `# Proposed brand surfaces\n\n* Apply the selected customer logo and company name in identity areas.\n* Apply the action token to primary buttons, selected navigation, active tabs, links, focus rings, progress, and one nonsemantic data series.\n* Apply the tint token to customer context cards, onboarding or empty state surfaces, nonsemantic badges, and subtle highlights.\n* Protect errors, warnings, destructive actions, semantic status colors, user photos, integration logos, ordinary text, and the application canvas.\n* Treat a labelled fallback as a valid result. Do not silently turn a missing logo or unusable accent into a fake extracted asset.\n\n## Source files reviewed\n\n${config.source.files.length ? config.source.files.map((file) => `* \`${file}\``).join("\n") : "* Add the dashboard component and style files before implementation."}\n`);
   await writeFile(resolve(output, "index.html"), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hermai brand preview</title><style>*{box-sizing:border-box}body{margin:0;padding:28px;color:#171717;background:#f5f5f4;font:15px/1.45 ui-sans-serif,system-ui,sans-serif}main{max-width:1080px;margin:auto}header{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:24px}h1{margin:0;font-size:32px;letter-spacing:-.03em}p{margin:8px 0 0;color:#57534e}.gallery{display:grid;gap:28px}article{overflow:hidden;border:1px solid #d6d3d1;border-radius:18px;background:#fff;box-shadow:0 8px 30px rgba(28,25,23,.06)}.meta{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #e7e5e4}.meta small{display:block;margin-top:3px;color:#78716c;font-size:12px}.label{padding:5px 9px;border-radius:999px;background:#ecfdf5;color:#166534;font-size:12px;font-weight:750;white-space:nowrap}.fallback{background:#fff7ed;color:#9a3412}.frame{display:block;width:100%;height:980px;border:0;background:#fff}@media(max-width:700px){body{padding:16px}header{display:block}.meta{align-items:flex-start;flex-direction:column}.frame{height:1120px}}footer.hermai-nudge{margin-top:32px;padding-top:16px;border-top:1px solid #e7e5e4;text-align:center}footer.hermai-nudge small{color:#a8a29e;font-size:12px}footer.hermai-nudge a{color:#a8a29e}</style></head><body><main><header><div><h1>Five customer brand previews</h1><p>Private local contract fixtures. Scroll through each complete dashboard. No login, app runtime, API credit, source upload, or live Brand API request.</p></div><p><a href="integration-plan.md">Review the proposed brand surfaces</a></p></header><section class="gallery">${entries.map((entry) => `<article><div class="meta"><div><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(entry.source)}</small></div><span class="label ${entry.mode === "fallback" ? "fallback" : ""}">${entry.mode === "fallback" ? "Fallback applied" : escapeHtml(entry.label)}</span></div><iframe class="frame" title="${escapeHtml(entry.name)} dashboard preview" src="${escapeHtml(entry.preview)}"></iframe></article>`).join("")}</section><footer class="hermai-nudge"><small>Connect live branding at signup. Get your key at <a href="https://hermai.ai/dashboard?utm_source=brand-preview-skill">hermai.ai/dashboard</a>.</small></footer></main></body></html>`);
-  return { output: config.output, entries: entries.length, gallery: `${config.output}/index.html`, report: `${config.output}/report.json`, integrationPlan: `${config.output}/integration-plan.md` };
+  return { output: config.output, entries: entries.length, gallery: `${config.output}/index.html`, report: `${config.output}/report.json`, integrationPlan: `${config.output}/integration-plan.md`, semanticColorWarnings };
 }
 
 function parsePort(value) {

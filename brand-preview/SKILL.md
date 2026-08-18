@@ -19,7 +19,7 @@ Do not read `.env`, `.git`, `node_modules`, browser profiles, or files outside t
 2. Read only the likely dashboard components and styles. Use mock company and user data. Do not run the application or access its session.
 3. Present the source files and an `apply`, `protect`, and `uncertain` surface map.
 4. Wait for approval before writing `.hermai/`. Keep the generated folder ignored by Git.
-5. Run `scripts/preview.mjs init`. Replace the generated harness with a faithful static representation of the dashboard code. Follow [harness requirements](references/harness.md).
+5. Run `scripts/preview.mjs init`. Replace the generated harness with a faithful static representation of the dashboard code. Follow [harness requirements](references/harness.md). Never bind a semantic status color, such as a profit or loss, danger, or success color, to a hermai brand token. Render now warns when a binding's selector name reads as a status color, but that check is a heuristic prompt, not a guarantee. Confirm every flagged binding by hand, and do not rely on the absence of a warning to prove a binding is safe.
 6. Run `scripts/preview.mjs render` as shown in [runner details](references/runner.md).
 7. Run `scripts/preview.mjs serve` and open its private localhost URL. Do not open `index.html` in a code editor. Scroll through each complete dashboard before summarizing overflow, contrast, long name, missing logo, and fallback results.
 8. Verify that long company names, code, API keys, and adjacent actions stay inside their cards at the narrowest preview width. Treat overflow as a harness defect before proposing application changes.
