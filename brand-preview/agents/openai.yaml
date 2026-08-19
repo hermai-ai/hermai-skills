@@ -1,4 +1,4 @@
 interface:
   display_name: "Hermai Brand Preview"
-  short_description: "Preview five automated customer dashboard themes"
-  default_prompt: "Use $brand-preview to build a private local preview of this dashboard with five automated customer themes."
+  short_description: "Preview automated customer dashboard themes, five by default or twelve with the full pack"
+  default_prompt: "Use $brand-preview to build a private local preview of this dashboard with five automated customer themes. Add the full pack for all twelve."

@@ -5,7 +5,7 @@ description: Build a private code based preview of a local React or Next.js dash
 
 # Brand Preview
 
-Build a temporary static dashboard harness from the relevant application components. Then use the bundled runner to render five local customer theme fixtures. The runner makes no Brand API request. It applies the same `application_theme` contract that the API returns and labels bundled fixtures as local test data, not live extraction results. Render each preview at its natural dashboard height in one vertical scroll. Do not use a cramped comparison grid as the default view.
+Build a temporary static dashboard harness from the relevant application components. Then use the bundled runner to render local customer theme fixtures, five by default or all twelve with the full pack. The runner makes no Brand API request. It applies the same `application_theme` contract that the API returns and labels bundled fixtures as local test data, not live extraction results. Render each preview at its natural dashboard height in one vertical scroll. Do not use a cramped comparison grid as the default view.
 
 ## Privacy boundary
 
