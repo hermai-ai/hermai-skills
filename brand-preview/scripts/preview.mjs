@@ -11,9 +11,9 @@ const fixtureManifest = JSON.parse(await readFile(resolve(fixtureRoot, "manifest
 const TEST_PACK = fixtureManifest.brands;
 
 const QUICK_PACK_IDS = new Set([
-  "emberfox-bright",
-  "relaydesk-dark",
-  "brightbird-near-white", "longform-cooperative", "no-logo-labs-fallback",
+  "hubspot-vivid-bright",
+  "discord-dark-theme",
+  "casper-near-white", "nytimes-long-name", "berkshirehathaway-no-logo",
 ]);
 
 // Spelled out gallery counts for the pack sizes the bundled test pack
@@ -560,6 +560,10 @@ async function serve(config, args) {
     [".json", "application/json; charset=utf-8"],
     [".md", "text/markdown; charset=utf-8"],
     [".svg", "image/svg+xml"],
+    [".png", "image/png"],
+    [".webp", "image/webp"],
+    [".jpg", "image/jpeg"],
+    [".jpeg", "image/jpeg"],
   ]);
   const server = createServer(async (request, response) => {
     try {

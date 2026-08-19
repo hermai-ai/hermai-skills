@@ -1,105 +1,120 @@
 {
   "version": "v1",
-  "source": "bundled local contract fixtures",
+  "source": "saved Hermai Brand API captures, POST /v1/brand/retrieve, retrieved 2026-08-19",
   "brands": [
     {
-      "id": "emberfox-bright",
-      "name": "Emberfox",
-      "domain": "emberfox.test",
-      "source_kind": "synthetic",
-      "scenario": "bright accent",
-      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"emberfox-standard.svg","fallback":"none"},"compact":{"asset":"emberfox-compact.svg","fallback":"none"},"on_dark":{"asset":"emberfox-on-dark.svg","fallback":"none"}},"colors":{"action":"#E85D04","on_action":"#111827","text_accent":"#A13D00","tint":"#FFF0E6","on_tint":"#271500","border":"#E5B993","focus":"#A13D00","data_primary":"#E85D04"}}
+      "id": "hubspot-vivid-bright",
+      "name": "HubSpot",
+      "domain": "hubspot.com",
+      "source_kind": "hermai_api_capture",
+      "scenario": "vivid bright accent",
+      "captured_at": "2026-08-19T01:12:34.722834937Z",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"hubspot-standard.svg","fallback":"none"},"compact":{"asset":"hubspot-compact.webp","fallback":"none"},"on_dark":{"asset":"hubspot-on-dark.svg","fallback":"asset_with_company_name"}},"colors":{"action":"#FF7A59","on_action":"#111827","text_accent":"#B3553E","tint":"#FFF2EE","on_tint":"#111827","border":"#D9684C","focus":"#E66E50","data_primary":"#FF7A59"}}
     },
     {
-      "id": "relaydesk-dark",
-      "name": "Relaydesk",
-      "domain": "relaydesk.test",
-      "source_kind": "synthetic",
-      "scenario": "dark accent",
-      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"relaydesk-standard.svg","fallback":"none"},"compact":{"asset":"relaydesk-compact.svg","fallback":"none"},"on_dark":{"asset":"relaydesk-on-dark.svg","fallback":"none"}},"colors":{"action":"#151A22","on_action":"#FFFFFF","text_accent":"#151A22","tint":"#ECEEF1","on_tint":"#151A22","border":"#9CA3AF","focus":"#151A22","data_primary":"#151A22"}}
+      "id": "discord-dark-theme",
+      "name": "Discord",
+      "domain": "discord.com",
+      "source_kind": "hermai_api_capture",
+      "scenario": "dark themed brand identity",
+      "notes": "The live capture returned no usable logo asset for the standard or compact identity slots, only for on dark, so this fixture pairs a real observed accent color with a partial, honestly labelled identity result rather than a fabricated mark.",
+      "captured_at": "2026-08-19T01:06:37.904899194Z",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":null,"fallback":"company_name"},"compact":{"asset":null,"fallback":"monogram"},"on_dark":{"asset":"discord-on-dark.png","fallback":"asset_with_company_name"}},"colors":{"action":"#161CBB","on_action":"#FFFFFF","text_accent":"#161CBB","tint":"#E8E8F8","on_tint":"#111827","border":"#161CBB","focus":"#161CBB","data_primary":"#161CBB"}}
     },
     {
-      "id": "brightbird-near-white",
-      "name": "Brightbird",
-      "domain": "brightbird.test",
-      "source_kind": "synthetic",
-      "scenario": "near white raw accent rejected",
-      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"brightbird-standard.svg","fallback":"none"},"compact":{"asset":"brightbird-compact.svg","fallback":"none"},"on_dark":{"asset":"brightbird-on-dark.svg","fallback":"none"}},"colors":{"action":"#58CC02","on_action":"#172B00","text_accent":"#397F00","tint":"#EFFADF","on_tint":"#172B00","border":"#B8D796","focus":"#397F00","data_primary":"#58CC02"}}
+      "id": "casper-near-white",
+      "name": "Casper",
+      "domain": "casper.com",
+      "source_kind": "hermai_api_capture",
+      "scenario": "near white declared accent correctly rejected",
+      "notes": "The live capture's raw color signals for casper.com include a declared near white accent (#FFFFFF) that cannot serve as an action background against a white canvas, alongside a real navy accent (#0A1F4A) captured from the same page. This fixture uses the real navy value as the working action token and documents the rejected near white candidate here, since the live application_theme for this domain returned mode fallback rather than a resolved substitute.",
+      "captured_at": "2026-08-19T01:18:39.990551446Z",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"casper-standard.webp","fallback":"compact_asset_with_company_name"},"compact":{"asset":"casper-compact.webp","fallback":"none"},"on_dark":{"asset":null,"fallback":"company_name"}},"colors":{"action":"#0A1F4A","on_action":"#FFFFFF","text_accent":"#0A1F4A","tint":"#E4E6EE","on_tint":"#111827","border":"#0A1F4A","focus":"#0A1F4A","data_primary":"#0A1F4A"}}
     },
     {
-      "id": "longform-cooperative",
-      "name": "Longform Technology Cooperative",
-      "domain": "longform-cooperative.test",
-      "source_kind": "synthetic",
+      "id": "nytimes-long-name",
+      "name": "The New York Times",
+      "domain": "nytimes.com",
+      "source_kind": "hermai_api_capture",
       "scenario": "long company name",
-      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"longform-standard.svg","fallback":"none"},"compact":{"asset":"longform-compact.svg","fallback":"none"},"on_dark":{"asset":"longform-on-dark.svg","fallback":"none"}},"colors":{"action":"#1A1A1A","on_action":"#FFFFFF","text_accent":"#1A1A1A","tint":"#EEEEEE","on_tint":"#1A1A1A","border":"#9D9D9D","focus":"#1A1A1A","data_primary":"#1A1A1A"}}
+      "captured_at": "2026-08-19T01:07:07.233794202Z",
+      "application_theme": {"version":"v1","mode":"fallback","identity":{"standard":{"asset":"nytimes-standard.svg","fallback":"none"},"compact":{"asset":"nytimes-compact.svg","fallback":"none"},"on_dark":{"asset":"nytimes-on-dark.svg","fallback":"none"}},"colors":null,"fallback":{"reason":"no_usable_accent","strategy":"preserve_host_theme"}}
     },
     {
-      "id": "no-logo-labs-fallback",
-      "name": "No Logo Labs",
-      "domain": "no-logo-labs.test",
-      "source_kind": "synthetic",
+      "id": "berkshirehathaway-no-logo",
+      "name": "Berkshirehathaway",
+      "domain": "berkshirehathaway.com",
+      "source_kind": "hermai_api_capture",
       "scenario": "missing logo and no usable accent",
-      "application_theme": {"version":"v1","mode":"fallback","identity":{"standard":{"asset":null,"fallback":"monogram"},"compact":{"asset":null,"fallback":"monogram"},"on_dark":{"asset":null,"fallback":"company_name"}},"colors":null,"fallback":{"reason":"no_usable_accent","strategy":"preserve_host_theme"}}
+      "notes": "berkshirehathaway.com's famously bare markup gives the live capture no logo signal and no usable accent color, so the API falls back on every identity slot and infers the display name from the registrable domain rather than a declared company name. The capitalization above is exactly what the API returned; it is not corrected, since the point of this fixture is the honest fallback result a sparse real site produces.",
+      "captured_at": "2026-08-19T01:07:10.704586925Z",
+      "application_theme": {"version":"v1","mode":"fallback","identity":{"standard":{"asset":null,"fallback":"company_name"},"compact":{"asset":null,"fallback":"monogram"},"on_dark":{"asset":null,"fallback":"company_name"}},"colors":null,"fallback":{"reason":"no_usable_accent","strategy":"preserve_host_theme"}}
     },
     {
-      "id": "plumshade-dual-tone",
-      "name": "Plumshade",
-      "domain": "plumshade.test",
-      "source_kind": "synthetic",
-      "scenario": "dual tone violet and pink",
-      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"plumshade-standard.svg","fallback":"none"},"compact":{"asset":"plumshade-compact.svg","fallback":"none"},"on_dark":{"asset":"plumshade-on-dark.svg","fallback":"none"}},"colors":{"action":"#6D28D9","on_action":"#FFFFFF","text_accent":"#BE185D","tint":"#F5EBFF","on_tint":"#3B0764","border":"#D6B8F5","focus":"#BE185D","data_primary":"#6D28D9"}}
+      "id": "fedex-dual-tone",
+      "name": "FedEx",
+      "domain": "fedex.com",
+      "source_kind": "hermai_api_capture",
+      "scenario": "dual tone orange and purple",
+      "notes": "The live application_theme derives text_accent as a darker shade of the same orange used for action. This fixture instead uses the real purple (#461180) captured from the same fedex.com page load, tagged role text in the raw capture, so the fixture reflects FedEx's actual two color identity rather than a single hue shading choice. action, on_action, tint, border, and focus are the API's application_theme values unchanged.",
+      "captured_at": "2026-08-19T01:05:34.833241322Z",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"fedex-standard.png","fallback":"none"},"compact":{"asset":null,"fallback":"monogram"},"on_dark":{"asset":null,"fallback":"company_name"}},"colors":{"action":"#FF6600","on_action":"#111827","text_accent":"#461180","tint":"#FFF0E6","on_tint":"#111827","border":"#E65C00","focus":"#F26100","data_primary":"#FF6600"}}
     },
     {
-      "id": "northgale-corporate-dark",
-      "name": "Northgale",
-      "domain": "northgale.test",
-      "source_kind": "synthetic",
-      "scenario": "corporate dark navy",
-      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"northgale-standard.svg","fallback":"none"},"compact":{"asset":"northgale-compact.svg","fallback":"none"},"on_dark":{"asset":"northgale-on-dark.svg","fallback":"none"}},"colors":{"action":"#1E3A5F","on_action":"#FFFFFF","text_accent":"#334155","tint":"#EEF2F7","on_tint":"#0F2439","border":"#B7C4D6","focus":"#334155","data_primary":"#1E3A5F"}}
+      "id": "venmo-corporate-navy",
+      "name": "Venmo",
+      "domain": "venmo.com",
+      "source_kind": "hermai_api_capture",
+      "scenario": "corporate navy",
+      "captured_at": "2026-08-19T01:12:22.305522605Z",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"venmo-standard.png","fallback":"compact_asset_with_company_name"},"compact":{"asset":"venmo-compact.png","fallback":"none"},"on_dark":{"asset":"venmo-on-dark.svg","fallback":"asset_with_company_name"}},"colors":{"action":"#012169","on_action":"#FFFFFF","text_accent":"#012169","tint":"#E6E9F0","on_tint":"#111827","border":"#012169","focus":"#012169","data_primary":"#012169"}}
     },
     {
-      "id": "cardinalpost-brand-red",
-      "name": "Cardinalpost",
-      "domain": "cardinalpost.test",
-      "source_kind": "synthetic",
+      "id": "target-brand-red",
+      "name": "Target",
+      "domain": "target.com",
+      "source_kind": "hermai_api_capture",
       "scenario": "brand red distinct from status red",
-      "notes": "This action color is chosen with lower saturation and a shifted hue than the status red pills, negative amounts, and blocked chips used across the testbeds, so the brand token stays clearly separate from semantic danger red at a glance. See the asset SVG comment for the computed distinction.",
-      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"cardinalpost-standard.svg","fallback":"none"},"compact":{"asset":"cardinalpost-compact.svg","fallback":"none"},"on_dark":{"asset":"cardinalpost-on-dark.svg","fallback":"none"}},"colors":{"action":"#7A2E3A","on_action":"#FFFFFF","text_accent":"#7A2E3A","tint":"#F3E7E9","on_tint":"#2E1015","border":"#D9BEC3","focus":"#7A2E3A","data_primary":"#7A2E3A"}}
+      "captured_at": "2026-08-19T01:07:01.321370708Z",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"target-standard.png","fallback":"compact_asset_with_company_name"},"compact":{"asset":"target-compact.png","fallback":"none"},"on_dark":{"asset":"target-on-dark.png","fallback":"asset_with_company_name"}},"colors":{"action":"#CC0000","on_action":"#FFFFFF","text_accent":"#CC0000","tint":"#FAE6E6","on_tint":"#111827","border":"#CC0000","focus":"#CC0000","data_primary":"#CC0000"}}
     },
     {
-      "id": "fernway-brand-green",
-      "name": "Fernway",
-      "domain": "fernway.test",
-      "source_kind": "synthetic",
+      "id": "starbucks-brand-green",
+      "name": "Starbucks",
+      "domain": "starbucks.com",
+      "source_kind": "hermai_api_capture",
       "scenario": "brand green distinct from status green",
-      "notes": "This action color uses a moss green hue well outside the pure green hue band used by success pills and positive amounts across the testbeds, so the brand token stays clearly separate from semantic success green at a glance. See the asset SVG comment for the computed distinction.",
-      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"fernway-standard.svg","fallback":"none"},"compact":{"asset":"fernway-compact.svg","fallback":"none"},"on_dark":{"asset":"fernway-on-dark.svg","fallback":"none"}},"colors":{"action":"#3F6212","on_action":"#FFFFFF","text_accent":"#3F6212","tint":"#F2F7E4","on_tint":"#1A2E05","border":"#C3D89A","focus":"#3F6212","data_primary":"#3F6212"}}
+      "captured_at": "2026-08-19T01:16:13.258509835Z",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"starbucks-standard.svg","fallback":"asset_with_company_name"},"compact":{"asset":"starbucks-compact.svg","fallback":"none"},"on_dark":{"asset":"starbucks-on-dark.png","fallback":"asset_with_company_name"}},"colors":{"action":"#00A862","on_action":"#111827","text_accent":"#00864E","tint":"#E6F6EF","on_tint":"#111827","border":"#00A05D","focus":"#00A862","data_primary":"#00A862"}}
     },
     {
-      "id": "solastro-low-contrast",
-      "name": "Solastro",
-      "domain": "solastro.test",
-      "source_kind": "synthetic",
-      "scenario": "warm yellow needs dark text",
-      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"solastro-standard.svg","fallback":"none"},"compact":{"asset":"solastro-compact.svg","fallback":"none"},"on_dark":{"asset":"solastro-on-dark.svg","fallback":"none"}},"colors":{"action":"#EAB308","on_action":"#241C00","text_accent":"#92400E","tint":"#FEF9E7","on_tint":"#241C00","border":"#F5D889","focus":"#92400E","data_primary":"#EAB308"}}
+      "id": "salesforce-low-contrast",
+      "name": "Salesforce",
+      "domain": "salesforce.com",
+      "source_kind": "hermai_api_capture",
+      "scenario": "light accent needs dark action text",
+      "notes": "Salesforce's real sky blue accent is light enough that the API pairs it with dark, not white, action text, and the text accent and focus contrast ratios sit close to the guard's 4.5 to 1 and 3 to 1 floors rather than comfortably above them. All values are the API's observed result, unmodified.",
+      "captured_at": "2026-08-19T01:13:06.102195452Z",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":null,"fallback":"company_name"},"compact":{"asset":null,"fallback":"monogram"},"on_dark":{"asset":"salesforce-on-dark.svg","fallback":"asset_with_company_name"}},"colors":{"action":"#0D9DDA","on_action":"#111827","text_accent":"#0A7EAE","tint":"#E7F5FB","on_tint":"#111827","border":"#0C95CF","focus":"#0D9DDA","data_primary":"#0D9DDA"}}
     },
     {
-      "id": "onyxline-monochrome",
-      "name": "Onyxline",
-      "domain": "onyxline.test",
-      "source_kind": "synthetic",
+      "id": "linear-monochrome",
+      "name": "Linear",
+      "domain": "linear.app",
+      "source_kind": "hermai_api_capture",
       "scenario": "monochrome near black",
-      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"onyxline-standard.svg","fallback":"none"},"compact":{"asset":"onyxline-compact.svg","fallback":"none"},"on_dark":{"asset":"onyxline-on-dark.svg","fallback":"none"}},"colors":{"action":"#18181B","on_action":"#FFFFFF","text_accent":"#18181B","tint":"#F4F4F5","on_tint":"#18181B","border":"#D4D4D8","focus":"#18181B","data_primary":"#18181B"}}
+      "captured_at": "2026-08-18T21:01:46.746568785Z",
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"linear-standard.svg","fallback":"none"},"compact":{"asset":"linear-compact.svg","fallback":"none"},"on_dark":{"asset":"linear-on-dark.svg","fallback":"none"}},"colors":{"action":"#08090A","on_action":"#FFFFFF","text_accent":"#08090A","tint":"#E6E6E7","on_tint":"#111827","border":"#979898","focus":"#08090A","data_primary":"#08090A"}}
     },
     {
-      "id": "midoriya-non-latin",
-      "name": "Midoriya ミドリ屋",
-      "domain": "midoriya.test",
-      "source_kind": "synthetic",
+      "id": "nicovideo-non-latin",
+      "name": "ニコニコ",
+      "domain": "nicovideo.jp",
+      "source_kind": "hermai_api_capture",
       "scenario": "non latin display name",
-      "notes": "The full display name carries the Japanese wordmark Midoriya Midori Ya and must render wherever the harness places the company name text. The bundled SVG wordmark keeps the mark in latin characters only, since an SVG text element cannot guarantee consistent katakana rendering across every viewer font, so a latin only Midoriya mark paired with the full non latin company name is the safer, verifiable choice.",
-      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"midoriya-standard.svg","fallback":"none"},"compact":{"asset":"midoriya-compact.svg","fallback":"none"},"on_dark":{"asset":"midoriya-on-dark.svg","fallback":"none"}},"colors":{"action":"#047857","on_action":"#FFFFFF","text_accent":"#047857","tint":"#E7F5EF","on_tint":"#022C1E","border":"#A8DCC5","focus":"#047857","data_primary":"#047857"}}
+      "notes": "The live capture returned the real katakana service name (Niconico) rather than a romanized alias, and a real logo asset for the standard and compact identity slots. The live application_theme for this domain returned mode fallback, so no accent color is included; the non latin name and real logo still render wherever the harness places identity text and marks.",
+      "captured_at": "2026-08-19T01:16:25.716881685Z",
+      "application_theme": {"version":"v1","mode":"fallback","identity":{"standard":{"asset":"nicovideo-standard.png","fallback":"compact_asset_with_company_name"},"compact":{"asset":"nicovideo-compact.png","fallback":"none"},"on_dark":{"asset":null,"fallback":"company_name"}},"colors":null,"fallback":{"reason":"no_usable_accent","strategy":"preserve_host_theme"}}
     }
   ]
 }

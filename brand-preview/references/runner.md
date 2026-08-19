@@ -34,21 +34,21 @@ node "<skill directory>/scripts/preview.mjs" serve
 
 Open the returned `http://127.0.0.1:4177/` URL. Do not open `index.html` in a code editor. The server binds only to `127.0.0.1`, serves only the generated preview folder, and makes no external request.
 
-Both packs are local contract fixtures and do not call the Brand API. The runner copies only its bundled local logo assets to `.hermai/brand-preview/assets` and rejects a fixture that has unreadable action text, unreadable brand text, inadequate focus contrast, or an invalid fallback.
+Both packs are local contract fixtures built from saved Hermai Brand API captures and do not call the Brand API at render time. The runner copies only its bundled local logo assets to `.hermai/brand-preview/assets` and rejects a fixture that has unreadable action text, unreadable brand text, inadequate focus contrast, or an invalid fallback.
 
 ## Bundled brands
 
-The default pack is the first five entries below. The full pack, `--pack full`, is all twelve.
+The default pack is the first five entries below. The full pack, `--pack full`, is all twelve. Every entry is a real, well known company, captured from its live `hermai.ai` Brand API record and bundled with real logo assets. Each retains a `notes` field in the manifest wherever the fixture required an editorial choice, such as substituting a real secondary captured color for a dimension the live `application_theme` result did not itself resolve.
 
-* Emberfox, `emberfox-bright`, a bright orange accent.
-* Relaydesk, `relaydesk-dark`, a dark accent.
-* Brightbird, `brightbird-near-white`, a near white raw accent that the theme rejects as an action color.
-* Longform Technology Cooperative, `longform-cooperative`, a long company name.
-* No Logo Labs, `no-logo-labs-fallback`, a missing logo and no usable accent, so the theme falls back and preserves the host app's own theme.
-* Plumshade, `plumshade-dual-tone`, a dual tone brand with a violet action color and a pink text accent.
-* Northgale, `northgale-corporate-dark`, a low saturation corporate dark navy accent.
-* Cardinalpost, `cardinalpost-brand-red`, a brand red kept clearly distinct from the status red used for danger, negative, and blocked meaning.
-* Fernway, `fernway-brand-green`, a brand green kept clearly distinct from the status green used for success and positive meaning.
-* Solastro, `solastro-low-contrast`, a warm yellow accent so light it needs dark, not white, on action text.
-* Onyxline, `onyxline-monochrome`, a near black accent with a minimal gray tint.
-* Midoriya ミドリ屋, `midoriya-non-latin`, a full non latin display name. The bundled wordmark asset renders the mark in latin characters only; the full non latin name still renders wherever the harness places the company name text.
+* HubSpot, `hubspot-vivid-bright`, a vivid bright orange accent.
+* Discord, `discord-dark-theme`, a brand built around a dark themed product identity.
+* Casper, `casper-near-white`, a near white declared accent that cannot serve as an action color, with the real navy captured alongside it used instead.
+* The New York Times, `nytimes-long-name`, a long company name.
+* Berkshirehathaway, `berkshirehathaway-no-logo`, a missing logo and no usable accent, so the theme falls back and preserves the host app's own theme.
+* FedEx, `fedex-dual-tone`, a dual tone brand with a real captured orange action color and a real captured purple text accent.
+* Venmo, `venmo-corporate-navy`, a corporate navy accent.
+* Target, `target-brand-red`, a brand red kept clearly distinct from the status red used for danger, negative, and blocked meaning.
+* Starbucks, `starbucks-brand-green`, a brand green kept clearly distinct from the status green used for success and positive meaning.
+* Salesforce, `salesforce-low-contrast`, a light sky blue accent so light it needs dark, not white, on action text, with real contrast ratios close to the guard floors.
+* Linear, `linear-monochrome`, a near black accent with a minimal gray tint.
+* Nicovideo, `nicovideo-non-latin`, a full non latin display name (ニコニコ) with a real logo asset. The live record carries no accent color, so this fixture also exercises the fallback path.
