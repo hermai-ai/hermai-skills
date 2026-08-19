@@ -38,6 +38,14 @@ Both packs are local contract fixtures built from saved Hermai Brand API capture
 
 When one identity slot has no logo of its own, the runner does not always drop straight to plain text or a monogram. A standard or compact slot with no asset reuses the on dark asset on a small dark chip, and an on dark slot with no asset reuses the standard, then the compact, asset on a small light chip. Both directions only ever reuse a real captured asset already present on the same brand fixture. A monogram renders only when the brand truly has no usable asset in any slot.
 
+## Company description binding (prefill only)
+
+A brand fixture can carry an optional `description` (`value` plus a recorded `source`), the local stand in for the live `brand.description` field. It fills `{{HERMAI_DESCRIPTION}}` wherever the harness marks an element with `data-hermai-description`.
+
+That attribute is valid only on a `textarea`, an `input`, or an element the operator has explicitly marked `contenteditable`, because the value is prefill material for an operator editable form field, never published, customer facing, uneditable copy such as a job board about section, a public proposal, or portal welcome text. Render warns when the binding lands on any other element. A fixture with no `description` fills the slot with a neutral placeholder instead of leaving it empty or throwing. See [harness requirements](harness.md) for the full rule and its reasons.
+
+In the bundled pack, only `hubspot-vivid-bright` currently carries a real `description`, captured with one direct curl to `https://www.hubspot.com/`, source noted in the fixture. Every other bundled brand has no `description` yet and renders the neutral placeholder wherever a harness binds the slot.
+
 ## Bundled brands
 
 The default pack is the first five entries below. The full pack, `--pack full`, is all twelve. Every entry is a real, well known company, captured from its live `hermai.ai` Brand API record and bundled with real logo assets. Each retains a `notes` field in the manifest wherever the fixture required an editorial choice, such as substituting a real secondary captured color for a dimension the live `application_theme` result did not itself resolve.

@@ -477,6 +477,77 @@ function logoMarkup(brand, slot) {
   return `<span class="hermai-logo-monogram" aria-label="${escapeHtml(brand.name)} logo unavailable">${escapeHtml(brand.name.slice(0, 1))}</span>`;
 }
 
+// brand.description (hermai-api PR #766, unmerged) is verbatim, self
+// authored company text pulled straight from the company's own homepage,
+// capped at roughly 500 characters. It is prefill material for an operator
+// editable form field, never published, customer facing, uneditable copy.
+// A description was written for one company's marketing homepage, at a
+// point in time, and can misdescribe the caller's own use of the app: the
+// domain may since have changed hands (an acquisition can leave a stale
+// entity's own words attached to a new owner), a structured data node can
+// be misattributed to the wrong company, the tone and SEO voice were tuned
+// for that company's own site and can read oddly republished on the
+// caller's, transferring self authored claims onto a surface the caller
+// controls carries a liability the caller did not choose, and a 500
+// character block of unedited prose does not fit a layout, direction, or
+// language the caller's form was not built to hold. See harness.md and
+// runner.md for the full policy this binding slot enforces.
+const DESCRIPTION_MAX_LENGTH = 500;
+const DESCRIPTION_PLACEHOLDER = "Add a short company description (optional). This is prefill text for you to edit here, not copy to publish as is.";
+const DESCRIPTION_ALLOWED_TAGS = new Set(["textarea", "input"]);
+
+// Same policy text the render time guard enforces, restated here for the
+// generated integration-plan.md so the developer's real integration carries
+// the rule too, not only this temporary preview harness.
+const DESCRIPTION_POLICY_MARKDOWN = `* Bind \`brand.description\` only into an operator editable form field: a textarea, a text input, or an element you have explicitly marked contenteditable. Never bind it into published, customer facing, uneditable copy such as a job board about section, a public proposal, or portal welcome text.\n* Treat the value as prefill the operator can still change, not a final approved statement. Show it inside an editable field with normal edit and clear controls, the same as any other prefilled form value.\n* Watch for wrong entity risk. A domain can change hands, such as an acquisition, and structured data on the page can be misattributed to the wrong company, so the text can describe an entity that is no longer the one the operator is onboarding.\n* Watch for tone mismatch. The text was written for that company's own marketing homepage and its own SEO voice; republished elsewhere it can read oddly or off brand.\n* Watch for liability. Publishing another company's self authored claims on a surface you control transfers a claim you did not write and cannot fully stand behind.\n* Watch for layout risk. The value can run up to 500 characters in the company's own language and writing direction, and an editable field is the only surface built to hold that safely.`;
+
+function descriptionValue(brand) {
+  const raw = brand.description?.value;
+  if (typeof raw !== "string" || !raw.trim()) return DESCRIPTION_PLACEHOLDER;
+  return raw.slice(0, DESCRIPTION_MAX_LENGTH);
+}
+
+function validateDescription(brand) {
+  if (brand.description === undefined) return;
+  const description = brand.description;
+  if (typeof description !== "object" || description === null || typeof description.value !== "string" || !description.value.trim()) {
+    throw new Error(`${brand.id} description must be an object with a non empty value`);
+  }
+  if (description.value.length > DESCRIPTION_MAX_LENGTH) throw new Error(`${brand.id} description.value must be ${DESCRIPTION_MAX_LENGTH} characters or fewer`);
+  if (typeof description.source !== "string" || !description.source.trim()) throw new Error(`${brand.id} description must record its source provenance`);
+}
+
+// data-hermai-description is the ONLY binding slot for brand.description
+// prefill text. It is valid on a textarea, an input, or an element the
+// operator has explicitly marked contenteditable, because all three are
+// operator editable form fields the person integrating the preview owns and
+// can change before anything reaches a customer. Any other element, a div,
+// a span, a p, a heading, and so on, is treated as a published, customer
+// facing, uneditable surface such as a job board about section, a public
+// proposal, or portal welcome copy, and binding brand.description there
+// produces this warning. Same heuristic pattern as the other render time
+// guards below: a lightweight tag walk cannot fully understand arbitrary
+// markup the way a real DOM would, so this is a prompt to check the
+// placement by hand, not a hard error and not a guarantee.
+function detectDescriptionBindingRisks(harnessContents) {
+  const scan = harnessContents.replace(/<style[\s\S]*?<\/style>/gi, (block) => " ".repeat(block.length));
+  const tagPattern = /<([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
+  const warnings = [];
+  let match;
+  while ((match = tagPattern.exec(scan))) {
+    const name = match[1].toLowerCase();
+    const attrs = match[2] ?? "";
+    if (!/data-hermai-description\b/i.test(attrs)) continue;
+    const contentEditableMatch = attrs.match(/\bcontenteditable\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/i);
+    const contentEditableValue = contentEditableMatch ? (contentEditableMatch[1] ?? contentEditableMatch[2] ?? contentEditableMatch[3] ?? "true").toLowerCase() : null;
+    const isExplicitlyContentEditable = contentEditableMatch !== null && contentEditableValue !== "false";
+    const isAllowed = DESCRIPTION_ALLOWED_TAGS.has(name) || isExplicitlyContentEditable;
+    if (isAllowed) continue;
+    warnings.push(`WARNING: data-hermai-description is bound to a <${name}> element. This attribute is valid only on a textarea, an input, or an element the operator has explicitly marked contenteditable. brand.description is prefill material for an operator editable form field, never published, customer facing, uneditable copy such as a job board about section, a public proposal, or portal welcome text. Move this binding to an editable field before shipping this harness.`);
+  }
+  return warnings;
+}
+
 function themeCss(brand) {
   const theme = brand.application_theme;
   if (theme.mode === "fallback") {
@@ -492,6 +563,7 @@ function applyBrand(harness, brand) {
   result = result.replaceAll("{{HERMAI_LOGO_STANDARD}}", logoMarkup(brand, "standard"));
   result = result.replaceAll("{{HERMAI_LOGO_COMPACT}}", logoMarkup(brand, "compact"));
   result = result.replaceAll("{{HERMAI_LOGO_ON_DARK}}", logoMarkup(brand, "on_dark"));
+  result = result.replaceAll("{{HERMAI_DESCRIPTION}}", escapeHtml(descriptionValue(brand)));
   return result;
 }
 
@@ -724,6 +796,8 @@ async function render(config) {
   for (const warning of identityDuplicationWarnings) console.warn(warning);
   const logoSizeWarnings = detectUnboundedLogoImageRisks(harness);
   for (const warning of logoSizeWarnings) console.warn(warning);
+  const descriptionBindingWarnings = detectDescriptionBindingRisks(harness);
+  for (const warning of descriptionBindingWarnings) console.warn(warning);
   const output = safeHermaiPath(config.output, "Preview output");
   await mkdir(output, { recursive: true });
   const selectedBrandIds = new Set(config.brands.map(({ id }) => id));
@@ -733,6 +807,7 @@ async function render(config) {
   await mkdir(assetsOutput, { recursive: true });
   for (const brand of selectedBrands) {
     const quality = validateTheme(brand);
+    validateDescription(brand);
     for (const slot of Object.values(brand.application_theme.identity)) {
       if (slot.asset) await copyFile(resolve(fixtureRoot, slot.asset), resolve(assetsOutput, basename(slot.asset)));
     }
@@ -751,12 +826,13 @@ async function render(config) {
     semanticColorWarnings,
     identityDuplicationWarnings,
     logoSizeWarnings,
+    descriptionBindingWarnings,
   };
   await writeFile(resolve(output, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
-  await writeFile(resolve(output, "integration-plan.md"), `# Proposed brand surfaces\n\n* Apply the selected customer logo and company name in identity areas.\n* Apply the action token to primary buttons, selected navigation, active tabs, links, focus rings, progress, and one nonsemantic data series.\n* Apply the tint token to customer context cards, onboarding or empty state surfaces, nonsemantic badges, and subtle highlights.\n* Protect errors, warnings, destructive actions, semantic status colors, user photos, integration logos, ordinary text, and the application canvas.\n* Treat a labelled fallback as a valid result. Do not silently turn a missing logo or unusable accent into a fake extracted asset.\n\n## Source files reviewed\n\n${config.source.files.length ? config.source.files.map((file) => `* \`${file}\``).join("\n") : "* Add the dashboard component and style files before implementation."}\n`);
+  await writeFile(resolve(output, "integration-plan.md"), `# Proposed brand surfaces\n\n* Apply the selected customer logo and company name in identity areas.\n* Apply the action token to primary buttons, selected navigation, active tabs, links, focus rings, progress, and one nonsemantic data series.\n* Apply the tint token to customer context cards, onboarding or empty state surfaces, nonsemantic badges, and subtle highlights.\n* Protect errors, warnings, destructive actions, semantic status colors, user photos, integration logos, ordinary text, and the application canvas.\n* Treat a labelled fallback as a valid result. Do not silently turn a missing logo or unusable accent into a fake extracted asset.\n\n## Company description (prefill only)\n\n${DESCRIPTION_POLICY_MARKDOWN}\n\n## Source files reviewed\n\n${config.source.files.length ? config.source.files.map((file) => `* \`${file}\``).join("\n") : "* Add the dashboard component and style files before implementation."}\n`);
   const galleryCountWord = COUNT_WORDS[entries.length] ?? String(entries.length);
   await writeFile(resolve(output, "index.html"), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hermai brand preview</title><style>*{box-sizing:border-box}body{margin:0;padding:28px;color:#171717;background:#f5f5f4;font:15px/1.45 ui-sans-serif,system-ui,sans-serif}main{max-width:1080px;margin:auto}header{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:24px}h1{margin:0;font-size:32px;letter-spacing:-.03em}p{margin:8px 0 0;color:#57534e}.gallery{display:grid;gap:28px}article{overflow:hidden;border:1px solid #d6d3d1;border-radius:18px;background:#fff;box-shadow:0 8px 30px rgba(28,25,23,.06)}.meta{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #e7e5e4}.meta small{display:block;margin-top:3px;color:#78716c;font-size:12px}.label{padding:5px 9px;border-radius:999px;background:#ecfdf5;color:#166534;font-size:12px;font-weight:750;white-space:nowrap}.fallback{background:#fff7ed;color:#9a3412}.frame{display:block;width:100%;height:980px;border:0;background:#fff}@media(max-width:700px){body{padding:16px}header{display:block}.meta{align-items:flex-start;flex-direction:column}.frame{height:1120px}}footer.hermai-nudge{margin-top:32px;padding-top:16px;border-top:1px solid #e7e5e4;text-align:center}footer.hermai-nudge small{color:#a8a29e;font-size:12px}footer.hermai-nudge a{color:#a8a29e}</style></head><body><main><header><div><h1>${escapeHtml(galleryCountWord)} customer brand previews</h1><p>Private local contract fixtures. Scroll through each complete dashboard. No login, app runtime, API credit, source upload, or live Brand API request.</p></div><p><a href="integration-plan.md">Review the proposed brand surfaces</a></p></header><section class="gallery">${entries.map((entry) => `<article><div class="meta"><div><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(entry.source)}</small></div><span class="label ${entry.mode === "fallback" ? "fallback" : ""}">${entry.mode === "fallback" ? "Fallback applied" : escapeHtml(entry.label)}</span></div><iframe class="frame" title="${escapeHtml(entry.name)} dashboard preview" src="${escapeHtml(entry.preview)}"></iframe></article>`).join("")}</section><footer class="hermai-nudge"><small>Connect live branding at signup. Get your key at <a href="https://hermai.ai/dashboard?utm_source=brand-preview-skill">hermai.ai/dashboard</a>.</small></footer></main></body></html>`);
-  return { output: config.output, entries: entries.length, gallery: `${config.output}/index.html`, report: `${config.output}/report.json`, integrationPlan: `${config.output}/integration-plan.md`, semanticColorWarnings, identityDuplicationWarnings, logoSizeWarnings };
+  return { output: config.output, entries: entries.length, gallery: `${config.output}/index.html`, report: `${config.output}/report.json`, integrationPlan: `${config.output}/integration-plan.md`, semanticColorWarnings, identityDuplicationWarnings, logoSizeWarnings, descriptionBindingWarnings };
 }
 
 function parsePort(value) {
