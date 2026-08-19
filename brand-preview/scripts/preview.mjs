@@ -302,10 +302,51 @@ function validateHarness(contents) {
   return contents;
 }
 
+// A slot with no asset of its own does not have to fall straight to text or a
+// monogram. The pack often has a real, live captured asset in a sibling slot
+// that would render legibly with the right backing chip, and showing that
+// real mark beats an invented substitute or a bare initial. Two rules, one
+// per surface direction:
+//
+// (a) on_dark has no asset of its own: reuse the standard asset, then the
+//     compact asset, on a small light chip so a dark or colored mark such as
+//     Casper's navy C still reads clearly against a dark surface.
+// (b) standard or compact has no asset of its own: reuse the on_dark asset
+//     on a small dark chip so a light or white mark such as Discord's icon
+//     still reads clearly against a light surface, instead of dropping to a
+//     monogram.
+//
+// Every asset used here is already a real captured logo that ships with the
+// brand fixture; this only changes which of the brand's own real slots
+// backs a given placement, never fabricates a new one.
+const LIGHT_CHIP_FALLBACK_BACKGROUND = "#F5F5F4";
+const DARK_CHIP_BACKGROUND = "#171717";
+
+function resolveLogoAsset(brand, slot) {
+  const identity = brand.application_theme.identity;
+  const ownSlot = identity[slot];
+  if (ownSlot?.asset) return { asset: ownSlot.asset, chip: null };
+  if (slot === "on_dark") {
+    const sourceSlot = identity.standard?.asset ? "standard" : identity.compact?.asset ? "compact" : null;
+    if (!sourceSlot) return { asset: null, chip: null };
+    const tint = brand.application_theme.mode === "observed" ? brand.application_theme.colors?.tint : null;
+    return { asset: identity[sourceSlot].asset, chip: "light", chipBackground: tint ?? LIGHT_CHIP_FALLBACK_BACKGROUND };
+  }
+  if (identity.on_dark?.asset) return { asset: identity.on_dark.asset, chip: "dark", chipBackground: DARK_CHIP_BACKGROUND };
+  return { asset: null, chip: null };
+}
+
 function logoMarkup(brand, slot) {
   const identity = brand.application_theme.identity[slot];
-  if (identity?.asset) {
-    return `<img class="hermai-logo-image hermai-logo-${slot}" src="assets/${escapeHtml(basename(identity.asset))}" alt="${escapeHtml(brand.name)} logo">`;
+  const resolved = resolveLogoAsset(brand, slot);
+  if (resolved.asset) {
+    const image = `<img class="hermai-logo-image hermai-logo-${slot}" src="assets/${escapeHtml(basename(resolved.asset))}" alt="${escapeHtml(brand.name)} logo">`;
+    if (!resolved.chip) return image;
+    // Chip padding and shape are inlined rather than relying on a shared
+    // stylesheet class, because each testbed harness authors its own CSS
+    // and none of them know about a chip concept. This keeps the fixture
+    // pack self contained no matter which harness renders it.
+    return `<span class="hermai-logo-chip hermai-logo-chip-${resolved.chip}" style="display:inline-flex;align-items:center;justify-content:center;padding:4px 6px;border-radius:6px;line-height:0;background:${escapeHtml(resolved.chipBackground)}">${image}</span>`;
   }
   if (identity?.fallback === "company_name") return `<span class="hermai-logo-company">${escapeHtml(brand.name)}</span>`;
   return `<span class="hermai-logo-monogram" aria-label="${escapeHtml(brand.name)} logo unavailable">${escapeHtml(brand.name.slice(0, 1))}</span>`;
