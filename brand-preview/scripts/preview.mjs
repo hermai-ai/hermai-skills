@@ -66,6 +66,99 @@ const MAX_MODULE_CSS_BYTES = 200_000;
 const MAX_MODULE_CSS_DIRECTORIES = 400;
 const SKIP_DIRECTORY_NAMES = new Set(["node_modules", ".git", ".next", ".turbo", ".hermai", ".vercel", "dist", "build", "coverage", "out"]);
 
+// Word boundary match, not a bare substring test. A bare /app/i test used to
+// match any directory whose name merely contains the three letters "app",
+// such as a Next.js route group named "(use-page-wrapper)" or "(booking-page-wrapper)"
+// (both real directory names in a production Next.js monorepo), which
+// produced junk routes while the real dashboard route sat elsewhere. Word
+// boundaries still match the real, common conventions: "(dashboard)",
+// "(app)", "app.dub.co", and a plural "workspaces" segment.
+const ROUTE_NAME_PATTERN = /\b(?:dashboard|workspace|workspaces|app|apps)\b/i;
+
+// Render file names inspect looks for once a route directory is identified.
+// Earlier versions only looked for page.tsx/page.jsx/index.tsx/index.jsx, so
+// a directory whose only direct child was layout.tsx, the file that owns the
+// sidebar, logo, and nav chrome the skill exists to brand, reported zero
+// source candidates even though the real identity surfaces sat one file
+// away. layout.tsx/jsx now count too.
+const ROUTE_FILE_NAMES = ["page.tsx", "page.jsx", "layout.tsx", "layout.jsx", "index.tsx", "index.jsx"];
+
+// Real production Next.js apps almost always nest the actual dashboard page
+// (and its layout) below the matched directory, not directly inside it: a
+// route group directory commonly wraps a dynamic segment or a nested
+// sub-route, e.g. "(dashboard)/[slug]/layout.tsx" or "(dashboard)/overview/page.tsx".
+// A single fixed-depth check therefore found nothing in every real app tested
+// against this skill (dub, cal.com, formbricks, openstatus all matched a
+// directory name but reported an empty file list). This does one bounded
+// level of descent into a matched directory's own subdirectories, skipping
+// the same noise directories the CSS module glob already skips, and stops as
+// soon as it has enough files so a large route tree cannot make inspect slow.
+const MAX_ROUTE_DESCENT_DIRECTORIES = 60;
+const MAX_ROUTE_FILES_PER_MATCH = 4;
+
+async function findRouteFiles(directory) {
+  const found = [];
+  for (const filename of ROUTE_FILE_NAMES) {
+    if (found.length >= MAX_ROUTE_FILES_PER_MATCH) return found;
+    const path = resolve(directory, filename);
+    if (await readOptional(path)) found.push(path);
+  }
+  if (found.length) return found;
+  // Nothing directly inside the matched directory. Descend one bounded level
+  // to catch the common "(dashboard)/overview/page.tsx" and
+  // "(dashboard)/[slug]/layout.tsx" shapes real apps use.
+  const queue = [directory];
+  let visited = 0;
+  while (queue.length && visited < MAX_ROUTE_DESCENT_DIRECTORIES && found.length < MAX_ROUTE_FILES_PER_MATCH) {
+    const current = queue.shift();
+    visited += 1;
+    const entries = await readdir(current, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (entry.isDirectory() && !SKIP_DIRECTORY_NAMES.has(entry.name)) {
+        queue.push(resolve(current, entry.name));
+        continue;
+      }
+      if (entry.isFile() && ROUTE_FILE_NAMES.includes(entry.name)) {
+        found.push(resolve(current, entry.name));
+        if (found.length >= MAX_ROUTE_FILES_PER_MATCH) break;
+      }
+    }
+  }
+  return found;
+}
+
+// Fallback for frameworks that route by file name rather than by directory
+// name, such as React Router v7 / Remix flat routes (a real dashboard route
+// there is a flat file like "app/routes/_authenticated+/dashboard.tsx", with
+// no directory anywhere named "dashboard"). Only runs when the directory
+// based pass above found nothing, and is bounded the same way the CSS module
+// glob is bounded so a large route tree cannot make inspect slow.
+const MAX_FLAT_ROUTE_DIRECTORIES = 400;
+const MAX_FLAT_ROUTE_FILES = 6;
+const FLAT_ROUTE_NAME_PATTERN = /(?:^|[._+/-])(?:dashboard|workspace)(?:[._+/-]|$)/i;
+
+async function findFlatRouteFiles(rootDirectory) {
+  const found = [];
+  const queue = [rootDirectory];
+  let visited = 0;
+  while (queue.length && found.length < MAX_FLAT_ROUTE_FILES && visited < MAX_FLAT_ROUTE_DIRECTORIES) {
+    const directory = queue.shift();
+    visited += 1;
+    const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (!SKIP_DIRECTORY_NAMES.has(entry.name)) queue.push(resolve(directory, entry.name));
+        continue;
+      }
+      if (entry.isFile() && /\.(?:tsx|jsx)$/.test(entry.name) && FLAT_ROUTE_NAME_PATTERN.test(entry.name)) {
+        found.push(resolve(directory, entry.name));
+        if (found.length >= MAX_FLAT_ROUTE_FILES) break;
+      }
+    }
+  }
+  return found;
+}
+
 async function findModuleCssFiles(rootDirectory) {
   const found = [];
   const queue = [rootDirectory];
@@ -135,29 +228,61 @@ async function inspect() {
     const directory = resolve(projectRoot, candidate);
     const entries = await readdir(directory, { withFileTypes: true }).catch(() => []);
     for (const entry of entries) {
-      if (!entry.isDirectory() || !/dashboard|workspace|app/i.test(entry.name)) continue;
+      if (!entry.isDirectory() || !ROUTE_NAME_PATTERN.test(entry.name)) continue;
       routes.push(`/${entry.name}`);
-      for (const filename of ["page.tsx", "page.jsx", "index.tsx", "index.jsx"]) {
-        const path = resolve(directory, entry.name, filename);
-        if (await readOptional(path)) sourceCandidates.push(relative(projectRoot, path));
-      }
+      const routeFiles = await findRouteFiles(resolve(directory, entry.name));
+      for (const path of routeFiles) sourceCandidates.push(relative(projectRoot, path));
     }
   }
-  const styles = ["src/app/globals.css", "app/globals.css", "src/index.css", "src/styles.css"];
+  // Directory naming conventions miss file-based routers entirely, such as
+  // React Router v7 / Remix flat routes, where a real dashboard route is a
+  // flat file (app/routes/_authenticated+/dashboard.tsx) and no directory is
+  // ever named "dashboard". Only run this bounded fallback scan when the
+  // pass above found nothing, so a normal Next.js app never pays for it.
+  if (!sourceCandidates.length) {
+    for (const candidate of candidates) {
+      const found = await findFlatRouteFiles(resolve(projectRoot, candidate)).catch(() => []);
+      for (const path of found) {
+        sourceCandidates.push(relative(projectRoot, path));
+        routes.push(`/${basename(path).replace(/\.(?:tsx|jsx)$/, "")}`);
+      }
+      if (sourceCandidates.length) break;
+    }
+  }
+  const styles = [
+    "src/app/globals.css", "app/globals.css", "src/index.css", "src/styles.css",
+    "styles/globals.css", "src/styles/globals.css", "app/styles/globals.css",
+    "src/app/global.css", "src/global.css",
+  ];
   const tokens = {};
+  const unclassifiedColorTokens = [];
   for (const style of styles) {
     const contents = await readOptional(resolve(projectRoot, style));
     if (!contents) continue;
     sourceCandidates.push(style);
-    for (const match of contents.matchAll(/(--[A-Za-z_][A-Za-z0-9_-]*)\s*:/g)) {
+    for (const match of contents.matchAll(/(--[A-Za-z_][A-Za-z0-9_-]*)\s*:\s*([^;]+);/g)) {
       const name = match[1];
+      const value = match[2].trim();
       const normalized = name.toLowerCase();
-      if (!tokens.primary && /(?:primary|brand)(?!.*(?:text|surface|background))/.test(normalized)) tokens.primary = name;
-      if (!tokens.onPrimary && /on.*(?:primary|accent)|(?:primary|accent).*foreground/.test(normalized)) tokens.onPrimary = name;
-      if (!tokens.accent && /accent|link|focus/.test(normalized)) tokens.accent = name;
-      if (!tokens.subtle && /subtle|muted|tint/.test(normalized)) tokens.subtle = name;
+      let classified = false;
+      if (!tokens.primary && /(?:primary|brand)(?!.*(?:text|surface|background))/.test(normalized)) { tokens.primary = name; classified = true; }
+      if (!tokens.onPrimary && /on.*(?:primary|accent)|(?:primary|accent).*foreground/.test(normalized)) { tokens.onPrimary = name; classified = true; }
+      if (!tokens.accent && /accent|link|focus/.test(normalized)) { tokens.accent = name; classified = true; }
+      if (!tokens.subtle && /subtle|muted|tint/.test(normalized)) { tokens.subtle = name; classified = true; }
+      // The four buckets above only recognize a handful of naming
+      // conventions (primary, brand, accent, focus, subtle, muted, tint).
+      // A real app is free to name its action color anything, such as a
+      // "--cta" token. Rather than guess more names into the hard regexes,
+      // surface any other custom property that carries a literal color
+      // value as an unclassified candidate so a human or agent reviewing
+      // the inspect output can still find it and decide by hand. Bounded to
+      // a handful of entries so a large design token file stays readable.
+      if (!classified && unclassifiedColorTokens.length < 8 && /^#[0-9a-fA-F]{3,8}\b|^rgba?\(|^hsla?\(/.test(value)) {
+        unclassifiedColorTokens.push(name);
+      }
     }
   }
+  if (unclassifiedColorTokens.length) tokens.unclassified = [...new Set(unclassifiedColorTokens)];
   // The four paths above are blind to CSS modules, so an app styled entirely
   // with *.module.css files reported an empty tokens object even though it
   // has real colors. Glob module files under the same candidate roots,
@@ -484,6 +609,52 @@ function detectIdentityContainerRisks(harnessContents) {
   return warnings;
 }
 
+// Logo assets in the bundled test pack are not uniformly pre-sized. A
+// standard wordmark SVG usually ships with a small intrinsic width and
+// height (HubSpot's is 106x30), but an on-dark icon mark can ship at a much
+// larger native canvas (HubSpot's on-dark SVG is 800x800, meant to be scaled
+// down by the harness). A harness that constrains the parent
+// [data-hermai-logo] container's height but never gives the <img> itself an
+// explicit max-width/max-height, an easy mistake once a harness stops using
+// the shipped default template's single shared sizing rule, lets that image
+// render at its native size and blow out the layout. This is a heuristic
+// static check of the harness's own <style> block, not a real layout
+// engine, so it can only confirm a sizing rule exists somewhere for a slot
+// that is actually used; it cannot confirm the rule is tight enough. Treat
+// it the same way as the other render-time guards: a prompt to check the
+// rendered preview at the narrowest width by hand, not a guarantee.
+const LOGO_SIZE_PROPERTIES = ["width", "height", "max-width", "max-height"];
+const LOGO_SLOT_CLASS_SUFFIX = { standard: "hermai-logo-standard", compact: "hermai-logo-compact", on_dark: "hermai-logo-on_dark" };
+
+function detectUnboundedLogoImageRisks(harnessContents) {
+  const styleMatch = harnessContents.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  if (!styleMatch) return [];
+  let hasUniversalSizing = false;
+  const slotHasSizing = { standard: false, compact: false, on_dark: false };
+  for (const [, selectorRaw, body] of stripCssComments(styleMatch[1]).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = selectorRaw.trim();
+    if (!selector) continue;
+    const declaresSize = LOGO_SIZE_PROPERTIES.some((property) => new RegExp(`(?:^|[;{\\s])${property}\\s*:`, "i").test(body));
+    if (!declaresSize) continue;
+    if (/\.hermai-logo-image\b/.test(selector)) hasUniversalSizing = true;
+    for (const [slot, className] of Object.entries(LOGO_SLOT_CLASS_SUFFIX)) {
+      if (new RegExp(`\\.${className}\\b`).test(selector)) slotHasSizing[slot] = true;
+    }
+  }
+  if (hasUniversalSizing) return [];
+  const usedSlots = [
+    ["{{HERMAI_LOGO_STANDARD}}", "standard"],
+    ["{{HERMAI_LOGO_COMPACT}}", "compact"],
+    ["{{HERMAI_LOGO_ON_DARK}}", "on_dark"],
+  ].filter(([token]) => harnessContents.includes(token));
+  const warnings = [];
+  for (const [, slot] of usedSlots) {
+    if (slotHasSizing[slot]) continue;
+    warnings.push(`WARNING: no CSS rule bounds the ${slot} logo image's width or height (no max-width/max-height or width/height on .hermai-logo-image or .${LOGO_SLOT_CLASS_SUFFIX[slot]}). A bundled logo asset can ship without a small intrinsic size and render at its native size, which can be hundreds of pixels and break the layout. Give every logo variant an explicit bound.`);
+  }
+  return warnings;
+}
+
 function validateTheme(brand) {
   const theme = brand.application_theme;
   if (brand.source_kind === "synthetic" && !String(brand.domain ?? "").endsWith(".test")) throw new Error(`${brand.id} synthetic fixtures must use a reserved .test domain and a fictional identity`);
@@ -510,6 +681,8 @@ async function render(config) {
   for (const warning of semanticColorWarnings) console.warn(warning);
   const identityDuplicationWarnings = detectIdentityContainerRisks(harness);
   for (const warning of identityDuplicationWarnings) console.warn(warning);
+  const logoSizeWarnings = detectUnboundedLogoImageRisks(harness);
+  for (const warning of logoSizeWarnings) console.warn(warning);
   const output = safeHermaiPath(config.output, "Preview output");
   await mkdir(output, { recursive: true });
   const selectedBrandIds = new Set(config.brands.map(({ id }) => id));
@@ -536,12 +709,13 @@ async function render(config) {
     qualityGate: { protectedSurfaces: ["API keys", "code", "semantic status", "user photos", "integration logos", "application canvas"], minimumAppliedSurfaces: 7 },
     semanticColorWarnings,
     identityDuplicationWarnings,
+    logoSizeWarnings,
   };
   await writeFile(resolve(output, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   await writeFile(resolve(output, "integration-plan.md"), `# Proposed brand surfaces\n\n* Apply the selected customer logo and company name in identity areas.\n* Apply the action token to primary buttons, selected navigation, active tabs, links, focus rings, progress, and one nonsemantic data series.\n* Apply the tint token to customer context cards, onboarding or empty state surfaces, nonsemantic badges, and subtle highlights.\n* Protect errors, warnings, destructive actions, semantic status colors, user photos, integration logos, ordinary text, and the application canvas.\n* Treat a labelled fallback as a valid result. Do not silently turn a missing logo or unusable accent into a fake extracted asset.\n\n## Source files reviewed\n\n${config.source.files.length ? config.source.files.map((file) => `* \`${file}\``).join("\n") : "* Add the dashboard component and style files before implementation."}\n`);
   const galleryCountWord = COUNT_WORDS[entries.length] ?? String(entries.length);
   await writeFile(resolve(output, "index.html"), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hermai brand preview</title><style>*{box-sizing:border-box}body{margin:0;padding:28px;color:#171717;background:#f5f5f4;font:15px/1.45 ui-sans-serif,system-ui,sans-serif}main{max-width:1080px;margin:auto}header{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:24px}h1{margin:0;font-size:32px;letter-spacing:-.03em}p{margin:8px 0 0;color:#57534e}.gallery{display:grid;gap:28px}article{overflow:hidden;border:1px solid #d6d3d1;border-radius:18px;background:#fff;box-shadow:0 8px 30px rgba(28,25,23,.06)}.meta{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #e7e5e4}.meta small{display:block;margin-top:3px;color:#78716c;font-size:12px}.label{padding:5px 9px;border-radius:999px;background:#ecfdf5;color:#166534;font-size:12px;font-weight:750;white-space:nowrap}.fallback{background:#fff7ed;color:#9a3412}.frame{display:block;width:100%;height:980px;border:0;background:#fff}@media(max-width:700px){body{padding:16px}header{display:block}.meta{align-items:flex-start;flex-direction:column}.frame{height:1120px}}footer.hermai-nudge{margin-top:32px;padding-top:16px;border-top:1px solid #e7e5e4;text-align:center}footer.hermai-nudge small{color:#a8a29e;font-size:12px}footer.hermai-nudge a{color:#a8a29e}</style></head><body><main><header><div><h1>${escapeHtml(galleryCountWord)} customer brand previews</h1><p>Private local contract fixtures. Scroll through each complete dashboard. No login, app runtime, API credit, source upload, or live Brand API request.</p></div><p><a href="integration-plan.md">Review the proposed brand surfaces</a></p></header><section class="gallery">${entries.map((entry) => `<article><div class="meta"><div><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(entry.source)}</small></div><span class="label ${entry.mode === "fallback" ? "fallback" : ""}">${entry.mode === "fallback" ? "Fallback applied" : escapeHtml(entry.label)}</span></div><iframe class="frame" title="${escapeHtml(entry.name)} dashboard preview" src="${escapeHtml(entry.preview)}"></iframe></article>`).join("")}</section><footer class="hermai-nudge"><small>Connect live branding at signup. Get your key at <a href="https://hermai.ai/dashboard?utm_source=brand-preview-skill">hermai.ai/dashboard</a>.</small></footer></main></body></html>`);
-  return { output: config.output, entries: entries.length, gallery: `${config.output}/index.html`, report: `${config.output}/report.json`, integrationPlan: `${config.output}/integration-plan.md`, semanticColorWarnings, identityDuplicationWarnings };
+  return { output: config.output, entries: entries.length, gallery: `${config.output}/index.html`, report: `${config.output}/report.json`, integrationPlan: `${config.output}/integration-plan.md`, semanticColorWarnings, identityDuplicationWarnings, logoSizeWarnings };
 }
 
 function parsePort(value) {
