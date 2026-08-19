@@ -36,6 +36,8 @@ Open the returned `http://127.0.0.1:4177/` URL. Do not open `index.html` in a co
 
 Both packs are local contract fixtures built from saved Hermai Brand API captures and do not call the Brand API at render time. The runner copies only its bundled local logo assets to `.hermai/brand-preview/assets` and rejects a fixture that has unreadable action text, unreadable brand text, inadequate focus contrast, or an invalid fallback.
 
+When one identity slot has no logo of its own, the runner does not always drop straight to plain text or a monogram. A standard or compact slot with no asset reuses the on dark asset on a small dark chip, and an on dark slot with no asset reuses the standard, then the compact, asset on a small light chip. Both directions only ever reuse a real captured asset already present on the same brand fixture. A monogram renders only when the brand truly has no usable asset in any slot.
+
 ## Bundled brands
 
 The default pack is the first five entries below. The full pack, `--pack full`, is all twelve. Every entry is a real, well known company, captured from its live `hermai.ai` Brand API record and bundled with real logo assets. Each retains a `notes` field in the manifest wherever the fixture required an editorial choice, such as substituting a real secondary captured color for a dimension the live `application_theme` result did not itself resolve.
