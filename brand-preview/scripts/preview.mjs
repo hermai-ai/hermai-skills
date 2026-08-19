@@ -1,14 +1,29 @@
 #!/usr/bin/env node
 
-import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const skillRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixtureRoot = resolve(skillRoot, "assets/test-pack/v1");
-const fixtureManifest = JSON.parse(await readFile(resolve(fixtureRoot, "manifest.json"), "utf8"));
-const TEST_PACK = fixtureManifest.brands;
+const fixtureManifestRaw = await readFile(resolve(fixtureRoot, "manifest.json"), "utf8");
+const fixtureManifest = JSON.parse(fixtureManifestRaw);
+export const TEST_PACK = fixtureManifest.brands;
+// A short, stable fingerprint of the bundled pack manifest as it stood at
+// render time. The status subcommand recomputes this same hash from the
+// manifest on disk right now and compares the two, so a pack update (a new
+// brand added, an asset swapped, a color corrected) shows up as a stale
+// pack even when nobody bumped RENDERER_VERSION for that specific change.
+export const PACK_MANIFEST_HASH = createHash("sha256").update(fixtureManifestRaw).digest("hex").slice(0, 12);
+
+// Bump this on any change that affects rendered output: markup, copied
+// asset bytes, guard or warning text, gallery layout, or the report shape.
+// A comment or internal refactor with no output difference does not need a
+// bump. Prefer today's date written as YYYYMMDD; if bumping again the same
+// day, add one to the last two digits instead of repeating the date.
+export const RENDERER_VERSION = 20260819;
 
 const QUICK_PACK_IDS = new Set([
   "hubspot-vivid-bright",
@@ -45,6 +60,21 @@ const safeHermaiPath = (value, purpose) => {
 };
 const readOptional = async (path) => { try { return await readFile(path, "utf8"); } catch { return null; } };
 const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
+
+// Names a copied pack asset with a short content hash suffix, such as
+// linear-standard.a1b2c3d4.svg, so a changed asset gets a new file name a
+// browser cache can never confuse with the old bytes, while an unchanged
+// asset keeps producing the same name render after render and stays quiet
+// in a diff. The hash covers only the file's own bytes, never the brand id
+// or slot, so two brands that happen to share identical asset bytes still
+// get the same short hash on their own file name.
+function hashedAssetFilename(originalName, buffer) {
+  const hash = createHash("sha256").update(buffer).digest("hex").slice(0, 8);
+  const dot = originalName.lastIndexOf(".");
+  const stem = dot === -1 ? originalName : originalName.slice(0, dot);
+  const extension = dot === -1 ? "" : originalName.slice(dot);
+  return `${stem}.${hash}${extension}`;
+}
 
 // Selector name vocabulary shared by the CSS module classifier below and the
 // semantic status guard in validateHarness. A selector that matches this
@@ -461,11 +491,12 @@ function resolveLogoAsset(brand, slot) {
   return { asset: null, chip: null };
 }
 
-function logoMarkup(brand, slot) {
+function logoMarkup(brand, slot, assetHashedNames) {
   const identity = brand.application_theme.identity[slot];
   const resolved = resolveLogoAsset(brand, slot);
   if (resolved.asset) {
-    const image = `<img class="hermai-logo-image hermai-logo-${slot}" src="assets/${escapeHtml(basename(resolved.asset))}" alt="${escapeHtml(brand.name)} logo">`;
+    const fileName = assetHashedNames.get(resolved.asset) ?? basename(resolved.asset);
+    const image = `<img class="hermai-logo-image hermai-logo-${slot}" src="assets/${escapeHtml(fileName)}" alt="${escapeHtml(brand.name)} logo">`;
     if (!resolved.chip) return image;
     // Chip padding and shape are inlined rather than relying on a shared
     // stylesheet class, because each testbed harness authors its own CSS
@@ -557,12 +588,12 @@ function themeCss(brand) {
   return `<style id="hermai-brand-theme">:root{--hermai-brand:${c.action};--hermai-on-brand:${c.on_action};--hermai-text-accent:${c.text_accent};--hermai-tint:${c.tint};--hermai-on-tint:${c.on_tint};--hermai-border:${c.border};--hermai-focus:${c.focus};--hermai-data-primary:${c.data_primary}}body::before{content:"${escapeHtml(brand.scenario)}";position:fixed;z-index:9999;right:16px;top:16px;padding:7px 11px;border:1px solid rgba(0,0,0,.12);border-radius:999px;color:#171717;background:rgba(255,255,255,.94);font:700 12px/1.2 system-ui;box-shadow:0 4px 16px rgba(0,0,0,.08)}</style>`;
 }
 
-function applyBrand(harness, brand) {
+function applyBrand(harness, brand, assetHashedNames) {
   let result = harness.replace(/<\/head>/i, `${themeCss(brand)}</head>`);
   result = result.replaceAll("{{HERMAI_COMPANY_NAME}}", escapeHtml(brand.name));
-  result = result.replaceAll("{{HERMAI_LOGO_STANDARD}}", logoMarkup(brand, "standard"));
-  result = result.replaceAll("{{HERMAI_LOGO_COMPACT}}", logoMarkup(brand, "compact"));
-  result = result.replaceAll("{{HERMAI_LOGO_ON_DARK}}", logoMarkup(brand, "on_dark"));
+  result = result.replaceAll("{{HERMAI_LOGO_STANDARD}}", logoMarkup(brand, "standard", assetHashedNames));
+  result = result.replaceAll("{{HERMAI_LOGO_COMPACT}}", logoMarkup(brand, "compact", assetHashedNames));
+  result = result.replaceAll("{{HERMAI_LOGO_ON_DARK}}", logoMarkup(brand, "on_dark", assetHashedNames));
   result = result.replaceAll("{{HERMAI_DESCRIPTION}}", escapeHtml(descriptionValue(brand)));
   return result;
 }
@@ -799,27 +830,62 @@ async function render(config) {
   const descriptionBindingWarnings = detectDescriptionBindingRisks(harness);
   for (const warning of descriptionBindingWarnings) console.warn(warning);
   const output = safeHermaiPath(config.output, "Preview output");
+  // Read whatever report.json is already sitting in the output directory,
+  // before anything below touches it. An older or newer renderer can have
+  // produced that output, and the person running render right now deserves
+  // a heads up that they are about to overwrite output a different skill
+  // version made, since a stale gallery can otherwise look current while it
+  // still carries an older version's defects.
+  const previousReportRaw = await readOptional(resolve(output, "report.json"));
+  if (previousReportRaw) {
+    const previousReport = JSON.parse(previousReportRaw);
+    const previousVersion = previousReport.rendererVersion ?? "unknown, predates version stamping";
+    if (previousVersion !== RENDERER_VERSION) {
+      console.log(`NOTICE: overwriting output at ${config.output} rendered by brand preview v${previousVersion} with v${RENDERER_VERSION}.`);
+    }
+  }
   await mkdir(output, { recursive: true });
   const selectedBrandIds = new Set(config.brands.map(({ id }) => id));
   const selectedBrands = TEST_PACK.filter(({ id }) => selectedBrandIds.has(id));
   const entries = [];
   const assetsOutput = resolve(output, "assets");
   await mkdir(assetsOutput, { recursive: true });
+  // Original manifest relative asset path (for example "linear-standard.svg")
+  // to the content hashed file name actually written this render. Populated
+  // once per unique asset, then read back by applyBrand so every reference
+  // to a given asset inside one render points at the same hashed name.
+  const assetHashedNames = new Map();
   for (const brand of selectedBrands) {
     const quality = validateTheme(brand);
     validateDescription(brand);
     for (const slot of Object.values(brand.application_theme.identity)) {
-      if (slot.asset) await copyFile(resolve(fixtureRoot, slot.asset), resolve(assetsOutput, basename(slot.asset)));
+      if (!slot.asset || assetHashedNames.has(slot.asset)) continue;
+      const buffer = await readFile(resolve(fixtureRoot, slot.asset));
+      const hashedName = hashedAssetFilename(basename(slot.asset), buffer);
+      await writeFile(resolve(assetsOutput, hashedName), buffer);
+      assetHashedNames.set(slot.asset, hashedName);
     }
     const previewFile = `${brand.id}.html`;
-    await writeFile(resolve(output, previewFile), applyBrand(harness, brand));
+    await writeFile(resolve(output, previewFile), applyBrand(harness, brand, assetHashedNames));
     entries.push({ id: brand.id, label: brand.scenario, name: brand.name, preview: previewFile, mode: quality.mode, source: fixtureManifest.source, quality: quality.checks, appliedSurfaces: quality.mode === "observed" ? 8 : 0 });
+  }
+  // A prior render can have left hashed (or, before this change, unhashed)
+  // asset files behind that nothing in this render references any more,
+  // such as a logo the harness stopped using or a since replaced fixture
+  // asset. Remove anything the assets directory holds that this render did
+  // not just write, so the output never accumulates dead bytes over time.
+  const currentAssetFileNames = new Set(assetHashedNames.values());
+  const existingAssetFileNames = await readdir(assetsOutput).catch(() => []);
+  for (const fileName of existingAssetFileNames) {
+    if (!currentAssetFileNames.has(fileName)) await unlink(resolve(assetsOutput, fileName));
   }
   const report = {
     version: 2,
     offline: true,
     runtimeRequired: false,
     generatedAt: new Date().toISOString(),
+    rendererVersion: RENDERER_VERSION,
+    packManifestHash: PACK_MANIFEST_HASH,
     source: config.source,
     entries,
     qualityGate: { protectedSurfaces: ["API keys", "code", "semantic status", "user photos", "integration logos", "application canvas"], minimumAppliedSurfaces: 7 },
@@ -831,8 +897,8 @@ async function render(config) {
   await writeFile(resolve(output, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   await writeFile(resolve(output, "integration-plan.md"), `# Proposed brand surfaces\n\n* Apply the selected customer logo and company name in identity areas.\n* Apply the action token to primary buttons, selected navigation, active tabs, links, focus rings, progress, and one nonsemantic data series.\n* Apply the tint token to customer context cards, onboarding or empty state surfaces, nonsemantic badges, and subtle highlights.\n* Protect errors, warnings, destructive actions, semantic status colors, user photos, integration logos, ordinary text, and the application canvas.\n* Treat a labelled fallback as a valid result. Do not silently turn a missing logo or unusable accent into a fake extracted asset.\n\n## Company description (prefill only)\n\n${DESCRIPTION_POLICY_MARKDOWN}\n\n## Source files reviewed\n\n${config.source.files.length ? config.source.files.map((file) => `* \`${file}\``).join("\n") : "* Add the dashboard component and style files before implementation."}\n`);
   const galleryCountWord = COUNT_WORDS[entries.length] ?? String(entries.length);
-  await writeFile(resolve(output, "index.html"), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hermai brand preview</title><style>*{box-sizing:border-box}body{margin:0;padding:28px;color:#171717;background:#f5f5f4;font:15px/1.45 ui-sans-serif,system-ui,sans-serif}main{max-width:1080px;margin:auto}header{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:24px}h1{margin:0;font-size:32px;letter-spacing:-.03em}p{margin:8px 0 0;color:#57534e}.gallery{display:grid;gap:28px}article{overflow:hidden;border:1px solid #d6d3d1;border-radius:18px;background:#fff;box-shadow:0 8px 30px rgba(28,25,23,.06)}.meta{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #e7e5e4}.meta small{display:block;margin-top:3px;color:#78716c;font-size:12px}.label{padding:5px 9px;border-radius:999px;background:#ecfdf5;color:#166534;font-size:12px;font-weight:750;white-space:nowrap}.fallback{background:#fff7ed;color:#9a3412}.frame{display:block;width:100%;height:980px;border:0;background:#fff}@media(max-width:700px){body{padding:16px}header{display:block}.meta{align-items:flex-start;flex-direction:column}.frame{height:1120px}}footer.hermai-nudge{margin-top:32px;padding-top:16px;border-top:1px solid #e7e5e4;text-align:center}footer.hermai-nudge small{color:#a8a29e;font-size:12px}footer.hermai-nudge a{color:#a8a29e}</style></head><body><main><header><div><h1>${escapeHtml(galleryCountWord)} customer brand previews</h1><p>Private local contract fixtures. Scroll through each complete dashboard. No login, app runtime, API credit, source upload, or live Brand API request.</p></div><p><a href="integration-plan.md">Review the proposed brand surfaces</a></p></header><section class="gallery">${entries.map((entry) => `<article><div class="meta"><div><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(entry.source)}</small></div><span class="label ${entry.mode === "fallback" ? "fallback" : ""}">${entry.mode === "fallback" ? "Fallback applied" : escapeHtml(entry.label)}</span></div><iframe class="frame" title="${escapeHtml(entry.name)} dashboard preview" src="${escapeHtml(entry.preview)}"></iframe></article>`).join("")}</section><footer class="hermai-nudge"><small>Connect live branding at signup. Get your key at <a href="https://hermai.ai/dashboard?utm_source=brand-preview-skill">hermai.ai/dashboard</a>.</small></footer></main></body></html>`);
-  return { output: config.output, entries: entries.length, gallery: `${config.output}/index.html`, report: `${config.output}/report.json`, integrationPlan: `${config.output}/integration-plan.md`, semanticColorWarnings, identityDuplicationWarnings, logoSizeWarnings, descriptionBindingWarnings };
+  await writeFile(resolve(output, "index.html"), `<!doctype html><!-- Rendered with brand preview v${RENDERER_VERSION} --><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hermai brand preview</title><style>*{box-sizing:border-box}body{margin:0;padding:28px;color:#171717;background:#f5f5f4;font:15px/1.45 ui-sans-serif,system-ui,sans-serif}main{max-width:1080px;margin:auto}header{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:24px}h1{margin:0;font-size:32px;letter-spacing:-.03em}p{margin:8px 0 0;color:#57534e}.gallery{display:grid;gap:28px}article{overflow:hidden;border:1px solid #d6d3d1;border-radius:18px;background:#fff;box-shadow:0 8px 30px rgba(28,25,23,.06)}.meta{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #e7e5e4}.meta small{display:block;margin-top:3px;color:#78716c;font-size:12px}.label{padding:5px 9px;border-radius:999px;background:#ecfdf5;color:#166534;font-size:12px;font-weight:750;white-space:nowrap}.fallback{background:#fff7ed;color:#9a3412}.frame{display:block;width:100%;height:980px;border:0;background:#fff}@media(max-width:700px){body{padding:16px}header{display:block}.meta{align-items:flex-start;flex-direction:column}.frame{height:1120px}}footer.hermai-nudge{margin-top:32px;padding-top:16px;border-top:1px solid #e7e5e4;text-align:center}footer.hermai-nudge small{color:#a8a29e;font-size:12px}footer.hermai-nudge a{color:#a8a29e}.hermai-stamp{margin-top:6px;color:#d6d3d1;font-size:11px}</style></head><body><main><header><div><h1>${escapeHtml(galleryCountWord)} customer brand previews</h1><p>Private local contract fixtures. Scroll through each complete dashboard. No login, app runtime, API credit, source upload, or live Brand API request.</p></div><p><a href="integration-plan.md">Review the proposed brand surfaces</a></p></header><section class="gallery">${entries.map((entry) => `<article><div class="meta"><div><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(entry.source)}</small></div><span class="label ${entry.mode === "fallback" ? "fallback" : ""}">${entry.mode === "fallback" ? "Fallback applied" : escapeHtml(entry.label)}</span></div><iframe class="frame" title="${escapeHtml(entry.name)} dashboard preview" src="${escapeHtml(entry.preview)}"></iframe></article>`).join("")}</section><footer class="hermai-nudge"><small>Connect live branding at signup. Get your key at <a href="https://hermai.ai/dashboard?utm_source=brand-preview-skill">hermai.ai/dashboard</a>.</small><br><small class="hermai-stamp">Rendered with brand preview v${escapeHtml(String(RENDERER_VERSION))}</small></footer></main></body></html>`);
+  return { output: config.output, entries: entries.length, gallery: `${config.output}/index.html`, report: `${config.output}/report.json`, integrationPlan: `${config.output}/integration-plan.md`, rendererVersion: RENDERER_VERSION, semanticColorWarnings, identityDuplicationWarnings, logoSizeWarnings, descriptionBindingWarnings };
 }
 
 function parsePort(value) {
@@ -886,17 +952,97 @@ async function serve(config, args) {
   return { url: `http://${host}:${port}/`, localOnly: true, output: config.output };
 }
 
-const [command, ...rest] = process.argv.slice(2);
-const args = parseArgs(rest);
-if (command === "inspect") console.log(JSON.stringify(await inspect(), null, 2));
-else if (command === "init") console.log(JSON.stringify(await init(args), null, 2));
-else if (command === "render") {
-  const path = safeHermaiPath(typeof args.config === "string" ? args.config : ".hermai/brand-preview.json", "Preview configuration");
-  console.log(JSON.stringify(await render(validateConfig(JSON.parse(await readFile(path, "utf8")))), null, 2));
-} else if (command === "serve") {
-  const path = safeHermaiPath(typeof args.config === "string" ? args.config : ".hermai/brand-preview.json", "Preview configuration");
-  console.log(JSON.stringify(await serve(validateConfig(JSON.parse(await readFile(path, "utf8"))), args), null, 2));
-} else {
-  console.error("Usage: preview.mjs inspect | init [--pack full] | render [--config .hermai/brand-preview.json] | serve [--port 4177] [--config .hermai/brand-preview.json]");
-  process.exitCode = 2;
+// The developer's own report.json, when one already exists, is the
+// truthful record of what render last produced. status never re renders
+// anything; it only compares that record against the renderer running
+// right now and the pack manifest sitting on disk right now, so it works
+// even against output an older skill version left behind.
+async function status(args) {
+  const relativeConfigPath = typeof args.config === "string" ? args.config : ".hermai/brand-preview.json";
+  const configPath = safeHermaiPath(relativeConfigPath, "Preview configuration");
+  const currentVersionInfo = { current: RENDERER_VERSION };
+  const currentPackInfo = { current: PACK_MANIFEST_HASH };
+  const configRaw = await readOptional(configPath);
+  if (!configRaw) {
+    return {
+      configFound: false,
+      outputExists: false,
+      rendererVersion: { rendered: null, ...currentVersionInfo },
+      packManifestHash: { rendered: null, ...currentPackInfo },
+      verdict: "stale, rerun render",
+      summary: `No preview configuration found at ${relativeConfigPath}. Run init, then render, before checking status again.`,
+    };
+  }
+  let config;
+  try {
+    config = validateConfig(JSON.parse(configRaw));
+  } catch (error) {
+    return {
+      configFound: true,
+      outputExists: false,
+      rendererVersion: { rendered: null, ...currentVersionInfo },
+      packManifestHash: { rendered: null, ...currentPackInfo },
+      verdict: "stale, rerun render",
+      summary: `Preview configuration is invalid: ${error.message}. Fix it, or run init again, then render.`,
+    };
+  }
+  const output = safeHermaiPath(config.output, "Preview output");
+  const reportRaw = await readOptional(resolve(output, "report.json"));
+  if (!reportRaw) {
+    return {
+      configFound: true,
+      outputExists: false,
+      output: config.output,
+      rendererVersion: { rendered: null, ...currentVersionInfo },
+      packManifestHash: { rendered: null, ...currentPackInfo },
+      verdict: "stale, rerun render",
+      summary: `No rendered output at ${config.output}. Run render before checking status again.`,
+    };
+  }
+  const report = JSON.parse(reportRaw);
+  const renderedVersion = report.rendererVersion ?? null;
+  const renderedPackHash = report.packManifestHash ?? null;
+  const versionCurrent = renderedVersion === RENDERER_VERSION;
+  const packCurrent = renderedPackHash === PACK_MANIFEST_HASH;
+  const current = versionCurrent && packCurrent;
+  const mismatches = [];
+  if (!versionCurrent) mismatches.push(`renderer v${renderedVersion ?? "unknown, predates version stamping"} recorded, v${RENDERER_VERSION} running now`);
+  if (!packCurrent) mismatches.push(`pack manifest hash ${renderedPackHash ?? "unknown, predates hash stamping"} recorded, ${PACK_MANIFEST_HASH} on disk now`);
+  const verdict = current ? "current" : "stale, rerun render";
+  const summary = current
+    ? `current: output at ${config.output} matches renderer v${RENDERER_VERSION} and the pack manifest on disk now.`
+    : `stale, rerun render: ${mismatches.join("; ")}.`;
+  return {
+    configFound: true,
+    outputExists: true,
+    output: config.output,
+    rendererVersion: { rendered: renderedVersion, ...currentVersionInfo },
+    packManifestHash: { rendered: renderedPackHash, ...currentPackInfo },
+    verdict,
+    summary,
+  };
+}
+
+// Guarded so another script, such as the workspace regen audit tool, can
+// import RENDERER_VERSION, PACK_MANIFEST_HASH, or TEST_PACK without this
+// block running the command line dispatch below against its own argv.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  const [command, ...rest] = process.argv.slice(2);
+  const args = parseArgs(rest);
+  if (command === "inspect") console.log(JSON.stringify(await inspect(), null, 2));
+  else if (command === "init") console.log(JSON.stringify(await init(args), null, 2));
+  else if (command === "render") {
+    const path = safeHermaiPath(typeof args.config === "string" ? args.config : ".hermai/brand-preview.json", "Preview configuration");
+    console.log(JSON.stringify(await render(validateConfig(JSON.parse(await readFile(path, "utf8")))), null, 2));
+  } else if (command === "serve") {
+    const path = safeHermaiPath(typeof args.config === "string" ? args.config : ".hermai/brand-preview.json", "Preview configuration");
+    console.log(JSON.stringify(await serve(validateConfig(JSON.parse(await readFile(path, "utf8"))), args), null, 2));
+  } else if (command === "status") {
+    const result = await status(args);
+    console.log(JSON.stringify(result, null, 2));
+    if (result.verdict !== "current") process.exitCode = 1;
+  } else {
+    console.error("Usage: preview.mjs inspect | init [--pack full] | render [--config .hermai/brand-preview.json] | serve [--port 4177] [--config .hermai/brand-preview.json] | status [--config .hermai/brand-preview.json]");
+    process.exitCode = 2;
+  }
 }
