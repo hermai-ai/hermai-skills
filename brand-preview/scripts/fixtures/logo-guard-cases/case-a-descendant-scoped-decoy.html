@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<style>
+  :root {
+    --hermai-brand: #111827;
+    --hermai-on-brand: #ffffff;
+    --hermai-text-accent: #111827;
+    --hermai-tint: #f5f5f4;
+    --hermai-border: #d4d4d4;
+    --hermai-focus: #2563eb;
+    --hermai-data-primary: #111827;
+  }
+  .hermai-logo-standard { max-height: 32px; }
+  .hermai-logo-compact { max-height: 20px; }
+  .id-strip .hermai-logo-image { max-height: 18px; }
+</style>
+</head>
+<body>
+  <span data-hermai-logo>{{HERMAI_LOGO_STANDARD}}</span>
+  <div class="id-strip">
+    <span data-hermai-logo>{{HERMAI_LOGO_COMPACT}}</span>
+  </div>
+  <div class="dark-identity">
+    <span data-hermai-logo>{{HERMAI_LOGO_ON_DARK}}</span>
+  </div>
+  <span data-hermai-company>{{HERMAI_COMPANY_NAME}}</span>
+</body>
+</html>

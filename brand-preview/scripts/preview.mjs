@@ -23,7 +23,7 @@ export const PACK_MANIFEST_HASH = createHash("sha256").update(fixtureManifestRaw
 // A comment or internal refactor with no output difference does not need a
 // bump. Prefer today's date written as YYYYMMDD; if bumping again the same
 // day, add one to the last two digits instead of repeating the date.
-export const RENDERER_VERSION = 20260819;
+export const RENDERER_VERSION = 20260820;
 
 const QUICK_PACK_IDS = new Set([
   "hubspot-vivid-bright",
@@ -770,22 +770,154 @@ function detectIdentityContainerRisks(harnessContents) {
 const LOGO_SIZE_PROPERTIES = ["width", "height", "max-width", "max-height"];
 const LOGO_SLOT_CLASS_SUFFIX = { standard: "hermai-logo-standard", compact: "hermai-logo-compact", on_dark: "hermai-logo-on_dark" };
 
-function detectUnboundedLogoImageRisks(harnessContents) {
+// Splits a selector list on its top level commas only, so a comma inside an
+// attribute selector or a functional pseudo class such as :not(a, b) is left
+// alone. Each returned piece still needs its own universality check, since a
+// list such as "a, .hermai-logo-image" is universal in only one branch.
+function splitTopLevelSelectors(selectorList) {
+  const parts = [];
+  let depth = 0;
+  let current = "";
+  for (const char of selectorList) {
+    if (char === "(" || char === "[") depth += 1;
+    else if (char === ")" || char === "]") depth = Math.max(0, depth - 1);
+    if (char === "," && depth === 0) {
+      parts.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  parts.push(current);
+  return parts.map((part) => part.trim()).filter(Boolean);
+}
+
+// Matches only a genuinely unscoped ".hermai-logo-image" compound at the
+// start of a single selector: the bare class itself, optionally with pseudo
+// classes, pseudo elements, or attribute selectors attached to that same
+// element, and optionally followed by a combinator into further selector
+// text (a rule such as ".hermai-logo-image img { ... }" still bounds every
+// instance of the class, so trailing text after a combinator is allowed).
+// It rejects any selector where something precedes ".hermai-logo-image" in
+// the same compound (an element, id, or another class fused onto it, such
+// as "div.hermai-logo-image.something") or where it is reached only through
+// a descendant, child, or sibling combinator (".id-strip .hermai-logo-image"),
+// because those forms scope the size rule to one placement, not every logo.
+const UNIVERSAL_LOGO_IMAGE_SELECTOR_RE = /^\.hermai-logo-image(?:::?[a-zA-Z-][\w-]*(?:\([^)]*\))?|\[[^\]]*\])*(?=\s|>|\+|~|$)/;
+
+function isUniversalLogoImageSelector(subSelector) {
+  return UNIVERSAL_LOGO_IMAGE_SELECTOR_RE.test(subSelector.trim());
+}
+
+function selectorListIsUniversal(selectorList) {
+  return splitTopLevelSelectors(selectorList).some((subSelector) => isUniversalLogoImageSelector(subSelector));
+}
+
+// A rejected, non universal selector can still legitimately bound one slot:
+// the shipped default template's own pattern is a simple descendant chain
+// such as ".dark-identity .hermai-logo-image { max-height: ... }", scoping
+// the rule to whichever container the harness author wrapped that one
+// placement in. Recognize exactly that shape, a pure descendant chain of
+// plain class selectors ending at an otherwise unscoped ".hermai-logo-image"
+// compound, and return the required ancestor class names in order. A child,
+// sibling, or compound fused shape (">" , "+", "~", or another class or tag
+// fused directly onto ".hermai-logo-image") returns null, unrecognized, so
+// the caller still warns rather than guess at a shape this heuristic cannot
+// confirm.
+function descendantAncestorClassesForLogoImage(subSelector) {
+  const trimmed = subSelector.trim();
+  if (/[>+~]/.test(trimmed)) return null;
+  const compounds = trimmed.split(/\s+/).filter(Boolean);
+  if (compounds.length < 2) return null;
+  const last = compounds[compounds.length - 1];
+  if (!isUniversalLogoImageSelector(last)) return null;
+  const ancestors = [];
+  for (const compound of compounds.slice(0, -1)) {
+    const classMatch = /^\.([a-zA-Z_][\w-]*)$/.exec(compound);
+    if (!classMatch) return null;
+    ancestors.push(classMatch[1]);
+  }
+  return ancestors;
+}
+
+const LOGO_PLACEHOLDER_TO_SLOT = {
+  "{{HERMAI_LOGO_STANDARD}}": "standard",
+  "{{HERMAI_LOGO_COMPACT}}": "compact",
+  "{{HERMAI_LOGO_ON_DARK}}": "on_dark",
+};
+
+// Walks the harness markup the same way detectIdentityContainerRisks does,
+// and records, for each of the three logo slots, the union of every class
+// name on every element that wraps that slot's placeholder token anywhere
+// in the harness. This is what lets a descendant scoped CSS rule be matched
+// back to the one slot it actually bounds.
+function computeSlotAncestorClasses(harnessContents) {
+  const scan = harnessContents.replace(/<style[\s\S]*?<\/style>/gi, (block) => " ".repeat(block.length));
+  const tagPattern = /<\/?([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
+  const stack = [{ name: "#document", classes: new Set() }];
+  const slotAncestorClasses = { standard: new Set(), compact: new Set(), on_dark: new Set() };
+  const recordSlotsBetween = (start, end) => {
+    const text = scan.slice(start, end);
+    for (const [token, slot] of Object.entries(LOGO_PLACEHOLDER_TO_SLOT)) {
+      if (!text.includes(token)) continue;
+      for (const frame of stack) for (const className of frame.classes) slotAncestorClasses[slot].add(className);
+    }
+  };
+  let cursor = 0;
+  let match;
+  while ((match = tagPattern.exec(scan))) {
+    recordSlotsBetween(cursor, match.index);
+    cursor = match.index + match[0].length;
+    const raw = match[0];
+    const name = match[1].toLowerCase();
+    const attrs = match[2] ?? "";
+    if (raw.startsWith("</")) {
+      for (let index = stack.length - 1; index >= 1; index -= 1) {
+        if (stack[index].name === name) {
+          stack.length = index;
+          break;
+        }
+      }
+      continue;
+    }
+    const classAttrMatch = /\bclass\s*=\s*"([^"]*)"|\bclass\s*=\s*'([^']*)'/i.exec(attrs);
+    const classes = new Set((classAttrMatch ? classAttrMatch[1] ?? classAttrMatch[2] ?? "" : "").split(/\s+/).filter(Boolean));
+    const isSelfClosing = /\/\s*>$/.test(raw) || VOID_ELEMENTS.has(name);
+    if (!isSelfClosing) stack.push({ name, classes });
+  }
+  recordSlotsBetween(cursor, scan.length);
+  return slotAncestorClasses;
+}
+
+export function detectUnboundedLogoImageRisks(harnessContents) {
   const styleMatch = harnessContents.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
   if (!styleMatch) return [];
   let hasUniversalSizing = false;
   const slotHasSizing = { standard: false, compact: false, on_dark: false };
+  const scopedSizingRules = [];
   for (const [, selectorRaw, body] of stripCssComments(styleMatch[1]).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     const selector = selectorRaw.trim();
     if (!selector) continue;
     const declaresSize = LOGO_SIZE_PROPERTIES.some((property) => new RegExp(`(?:^|[;{\\s])${property}\\s*:`, "i").test(body));
     if (!declaresSize) continue;
-    if (/\.hermai-logo-image\b/.test(selector)) hasUniversalSizing = true;
+    if (selectorListIsUniversal(selector)) hasUniversalSizing = true;
+    for (const subSelector of splitTopLevelSelectors(selector)) {
+      const ancestorClasses = descendantAncestorClassesForLogoImage(subSelector);
+      if (ancestorClasses) scopedSizingRules.push(ancestorClasses);
+    }
     for (const [slot, className] of Object.entries(LOGO_SLOT_CLASS_SUFFIX)) {
       if (new RegExp(`\\.${className}\\b`).test(selector)) slotHasSizing[slot] = true;
     }
   }
   if (hasUniversalSizing) return [];
+  if (scopedSizingRules.length > 0) {
+    const slotAncestorClasses = computeSlotAncestorClasses(harnessContents);
+    for (const ancestorClasses of scopedSizingRules) {
+      for (const [slot, ancestors] of Object.entries(slotAncestorClasses)) {
+        if (ancestorClasses.every((className) => ancestors.has(className))) slotHasSizing[slot] = true;
+      }
+    }
+  }
   const usedSlots = [
     ["{{HERMAI_LOGO_STANDARD}}", "standard"],
     ["{{HERMAI_LOGO_COMPACT}}", "compact"],
