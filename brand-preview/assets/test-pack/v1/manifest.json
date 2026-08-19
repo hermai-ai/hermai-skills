@@ -9,7 +9,8 @@
       "source_kind": "hermai_api_capture",
       "scenario": "vivid bright accent",
       "captured_at": "2026-08-19T01:12:34.722834937Z",
-      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"hubspot-standard.svg","fallback":"none"},"compact":{"asset":"hubspot-compact.webp","fallback":"none"},"on_dark":{"asset":"hubspot-on-dark.svg","fallback":"asset_with_company_name"}},"colors":{"action":"#FF7A59","on_action":"#111827","text_accent":"#B3553E","tint":"#FFF2EE","on_tint":"#111827","border":"#D9684C","focus":"#E66E50","data_primary":"#FF7A59"}}
+      "application_theme": {"version":"v1","mode":"observed","identity":{"standard":{"asset":"hubspot-standard.svg","fallback":"none"},"compact":{"asset":"hubspot-compact.webp","fallback":"none"},"on_dark":{"asset":"hubspot-on-dark.svg","fallback":"asset_with_company_name"}},"colors":{"action":"#FF7A59","on_action":"#111827","text_accent":"#B3553E","tint":"#FFF2EE","on_tint":"#111827","border":"#D9684C","focus":"#E66E50","data_primary":"#FF7A59"}},
+      "description": {"value":"HubSpot's customer platform includes all the marketing, sales, customer service, and CRM software you need to grow your business.","source":"og:description tag on https://www.hubspot.com/ (the page's <meta name=\"description\"> carries the same text; the JSON-LD Organization node on the same page has no description property), captured 2026-08-19 with a single direct curl to the live homepage, no Hermai API call"}
     },
     {
       "id": "discord-dark-theme",

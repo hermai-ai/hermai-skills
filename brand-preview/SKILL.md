@@ -36,6 +36,8 @@ Apply only approved semantic surfaces:
 
 Protect errors, warnings, destructive actions, semantic status colors, user photos, integration logos, ordinary text, code, API keys, and the application canvas. Keep semantic chart colors neutral. A raw Brand API response provides selected identity slots and an application theme. Do not ask the caller to rank logos or colors. Never invent a customer accent. When `application_theme.mode` is `fallback`, preserve the host theme and label `Fallback applied`.
 
+`brand.description`, when present, is prefill material for an operator editable form field only, never published, customer facing, uneditable copy. Bind it only with `data-hermai-description` on a `textarea`, an `input`, or an explicitly `contenteditable` element. See [harness requirements](references/harness.md) for the full rule and its reasons.
+
 Never pair a real company name with a fabricated logo or guessed brand asset. A real company fixture must come from a saved Hermai Brand API response and retain its provenance. Synthetic fixtures must use fictional names and reserved `.test` domains.
 
 Ask one focused question if the route, selector, or token mapping is uncertain. Do not replace raw colors globally. Label a no accent result as `Fallback applied`.
