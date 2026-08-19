@@ -34,7 +34,21 @@ node "<skill directory>/scripts/preview.mjs" serve
 
 Open the returned `http://127.0.0.1:4177/` URL. Do not open `index.html` in a code editor. The server binds only to `127.0.0.1`, serves only the generated preview folder, and makes no external request.
 
-Both packs are local contract fixtures built from saved Hermai Brand API captures and do not call the Brand API at render time. The runner copies only its bundled local logo assets to `.hermai/brand-preview/assets` and rejects a fixture that has unreadable action text, unreadable brand text, inadequate focus contrast, or an invalid fallback.
+Both packs are local contract fixtures built from saved Hermai Brand API captures and do not call the Brand API at render time. The runner copies only its bundled local logo assets to `.hermai/brand-preview/assets`, naming each copy with a short content hash suffix such as `linear-standard.a1b2c3d4.svg`, and rejects a fixture that has unreadable action text, unreadable brand text, inadequate focus contrast, or an invalid fallback.
+
+## Staleness
+
+Every render stamps a renderer version into `report.json` and into the gallery `index.html`, as an HTML comment near the top plus a small muted line in the footer. A changed asset gets a new hashed file name, so a browser can never serve stale bytes for it, and an unreferenced hashed file left behind by an earlier render is removed on the next render.
+
+If output already sits in the target folder, render reads its `report.json` first and prints a notice on the console when the version that produced it does not match the version running now. This is informational only; render still proceeds and overwrites the output.
+
+Check whether an existing gallery is current without rendering it again:
+
+```bash
+node "<skill directory>/scripts/preview.mjs" status
+```
+
+Run this from the application root, same as the other subcommands. It reports whether output exists, the renderer version that produced it against the version running now, the bundled pack manifest hash recorded at render time against the manifest on disk now, and a one line verdict of `current` or `stale, rerun render`. The command exits with a nonzero status whenever the verdict is not `current`, so it can gate a script.
 
 When one identity slot has no logo of its own, the runner does not always drop straight to plain text or a monogram. A standard or compact slot with no asset reuses the on dark asset on a small dark chip, and an on dark slot with no asset reuses the standard, then the compact, asset on a small light chip. Both directions only ever reuse a real captured asset already present on the same brand fixture. A monogram renders only when the brand truly has no usable asset in any slot.
 
@@ -62,3 +76,7 @@ The default pack is the first five entries below. The full pack, `--pack full`, 
 * Salesforce, `salesforce-low-contrast`, a light sky blue accent so light it needs dark, not white, on action text, with real contrast ratios close to the guard floors.
 * Linear, `linear-monochrome`, a near black accent with a minimal gray tint.
 * Nicovideo, `nicovideo-non-latin`, a full non latin display name (ニコニコ) with a real logo asset. The live record carries no accent color, so this fixture also exercises the fallback path.
+
+## Workspace regen audit (internal tool, not for real users)
+
+A real user has one application and one gallery, and `status` above already tells them whether it is current. This workspace holds several galleries at once, the bundled testbeds and the dogfood app among them, so `scripts/regen-audit.mjs <app root> [<app root> ...]` reruns render in each given app root against this checkout, then asserts every output has zero unresolved placeholders, an `xmlns` attribute on every SVG asset, chip markup on every single variant brand's rendered preview, empty guard warning arrays, and the current version stamp, printing a per gallery table and exiting nonzero on any failure.
