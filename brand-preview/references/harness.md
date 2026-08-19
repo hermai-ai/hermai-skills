@@ -9,6 +9,7 @@ Create `.hermai/brand-preview-harness.html` from the approved dashboard componen
 * Keep the dashboard structure familiar. Change only approved customer identity surfaces.
 * Put `{{HERMAI_COMPANY_NAME}}` inside the element with `data-hermai-company`.
 * Put `{{HERMAI_LOGO_STANDARD}}`, `{{HERMAI_LOGO_COMPACT}}`, and `{{HERMAI_LOGO_ON_DARK}}` inside appropriate elements with `data-hermai-logo`.
+* Give each identity placement one logo variant in its own parent container. Put company name text only where no wordmark renders; a standard variant logo already carries the wordmark, so do not also bind `data-hermai-company` beside it. Render warns when a parent container binds more than one `data-hermai-logo`, or pairs `data-hermai-company` with a standard variant logo, but treat that warning as a prompt to check by hand, not as the only safeguard.
 * Use `--hermai-brand`, `--hermai-on-brand`, `--hermai-text-accent`, `--hermai-tint`, `--hermai-border`, `--hermai-focus`, and `--hermai-data-primary` for approved brand surfaces.
 * Keep semantic status colors, code, API keys, user photos, integration marks, and the application canvas independent from these variables. This includes a profit or loss, danger, or success color. Render warns when a selector name reads as a status color and is still bound to a token, but treat that warning as a prompt to check by hand, not as the only safeguard.
 
